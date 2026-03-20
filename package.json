@@ -1,12 +1,26 @@
 {
-  "name": "feynman",
+  "name": "@companion-ai/feynman",
   "version": "0.1.0",
-  "private": true,
-  "description": "Research-first agent built on pi-coding-agent",
+  "description": "Research-first CLI agent built on Pi and alphaXiv",
   "type": "module",
+  "bin": {
+    "feynman": "./bin/feynman.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    ".pi/",
+    "extensions/",
+    "prompts/",
+    "skills/",
+    "README.md",
+    ".env.example"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsx src/index.ts",
     "start": "tsx src/index.ts",
+    "start:dist": "node ./bin/feynman.js",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -27,7 +41,7 @@
     ]
   },
   "dependencies": {
-    "@companion-ai/alpha-hub": "^0.1.0",
+    "@companion-ai/alpha-hub": "^0.1.1",
     "@mariozechner/pi-ai": "^0.56.1",
     "@mariozechner/pi-coding-agent": "^0.56.1",
     "@sinclair/typebox": "^0.34.41",
@@ -40,5 +54,13 @@
   },
   "engines": {
     "node": ">=20.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/getcompanion-ai/feynman.git"
+  },
+  "homepage": "https://github.com/getcompanion-ai/feynman#readme",
+  "bugs": {
+    "url": "https://github.com/getcompanion-ai/feynman/issues"
   }
 }

@@ -1,6 +1,6 @@
 # Feynman
 
-`feynman` is a research-first agent scaffold built on `@mariozechner/pi-coding-agent`.
+`feynman` is a research-first CLI built on `@mariozechner/pi-coding-agent`.
 
 It keeps the useful parts of a coding agent:
 - file access
@@ -19,7 +19,20 @@ But it biases the runtime toward research work:
 The primary paper backend is `@companion-ai/alpha-hub` and your alphaXiv account.
 The rest of the workflow is augmented through a curated `.pi/settings.json` package stack.
 
-## Setup
+## Install
+
+```bash
+npm install -g @companion-ai/feynman
+```
+
+Then authenticate alphaXiv and start the CLI:
+
+```bash
+feynman --alpha-login
+feynman
+```
+
+For local development:
 
 ```bash
 cd /Users/advaitpaliwal/Companion/Code/feynman
@@ -28,13 +41,7 @@ cp .env.example .env
 npm run start
 ```
 
-If you already use `pi`, Feynman will reuse the usual auth/config locations for model access.
-
-Before deep paper work, make sure alphaXiv auth is set up:
-
-```bash
-npx @companion-ai/alpha-hub login
-```
+Feynman uses Pi under the hood, but the user-facing entrypoint is `feynman`, not `pi`.
 
 ## Commands
 

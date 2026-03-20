@@ -8,6 +8,12 @@ import { fileURLToPath } from "node:url";
 import readline from "node:readline/promises";
 
 import {
+	getUserName as getAlphaUserName,
+	isLoggedIn as isAlphaLoggedIn,
+	login as loginAlpha,
+	logout as logoutAlpha,
+} from "@companion-ai/alpha-hub/lib";
+import {
 	AuthStorage,
 	createAgentSession,
 	createCodingTools,
@@ -24,6 +30,9 @@ type ThinkingLevel = "off" | "low" | "medium" | "high";
 function printHelp(): void {
 	console.log(`Feynman commands:
 	  /help                     Show this help
+	  /alpha-login              Sign in to alphaXiv
+	  /alpha-logout             Clear alphaXiv auth
+	  /alpha-status             Show alphaXiv auth status
 	  /new                      Start a fresh persisted session
 	  /exit                     Quit the REPL
 	  /lit-review <topic>       Expand the literature review prompt template
@@ -34,6 +43,9 @@ function printHelp(): void {
 
 	CLI flags:
   --prompt "<text>"         Run one prompt and exit
+  --alpha-login             Sign in to alphaXiv and exit
+  --alpha-logout            Clear alphaXiv auth and exit
+  --alpha-status            Show alphaXiv auth status and exit
   --model provider:model    Force a specific model
   --thinking level          off | low | medium | high
   --cwd /path/to/workdir    Working directory for tools
@@ -78,6 +90,9 @@ async function main(): Promise<void> {
 		options: {
 			cwd: { type: "string" },
 			help: { type: "boolean" },
+			"alpha-login": { type: "boolean" },
+			"alpha-logout": { type: "boolean" },
+			"alpha-status": { type: "boolean" },
 			model: { type: "string" },
 			"new-session": { type: "boolean" },
 			prompt: { type: "string" },
@@ -88,6 +103,35 @@ async function main(): Promise<void> {
 
 	if (values.help) {
 		printHelp();
+		return;
+	}
+
+	if (values["alpha-login"]) {
+		const result = await loginAlpha();
+		const name =
+			(result.userInfo &&
+			typeof result.userInfo === "object" &&
+			"name" in result.userInfo &&
+			typeof result.userInfo.name === "string")
+				? result.userInfo.name
+				: getAlphaUserName();
+		console.log(name ? `alphaXiv login complete: ${name}` : "alphaXiv login complete");
+		return;
+	}
+
+	if (values["alpha-logout"]) {
+		logoutAlpha();
+		console.log("alphaXiv auth cleared");
+		return;
+	}
+
+	if (values["alpha-status"]) {
+		if (isAlphaLoggedIn()) {
+			const name = getAlphaUserName();
+			console.log(name ? `alphaXiv logged in as ${name}` : "alphaXiv logged in");
+		} else {
+			console.log("alphaXiv not logged in");
+		}
 		return;
 	}
 
@@ -188,6 +232,35 @@ async function main(): Promise<void> {
 
 			if (line === "/help") {
 				printHelp();
+				continue;
+			}
+
+			if (line === "/alpha-login") {
+				const result = await loginAlpha();
+				const name =
+					(result.userInfo &&
+					typeof result.userInfo === "object" &&
+					"name" in result.userInfo &&
+					typeof result.userInfo.name === "string")
+						? result.userInfo.name
+						: getAlphaUserName();
+				console.log(name ? `alphaXiv login complete: ${name}` : "alphaXiv login complete");
+				continue;
+			}
+
+			if (line === "/alpha-logout") {
+				logoutAlpha();
+				console.log("alphaXiv auth cleared");
+				continue;
+			}
+
+			if (line === "/alpha-status") {
+				if (isAlphaLoggedIn()) {
+					const name = getAlphaUserName();
+					console.log(name ? `alphaXiv logged in as ${name}` : "alphaXiv logged in");
+				} else {
+					console.log("alphaXiv not logged in");
+				}
 				continue;
 			}
 

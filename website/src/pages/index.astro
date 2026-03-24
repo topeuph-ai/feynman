@@ -2,56 +2,52 @@
 import Layout from "@/layouts/main.astro"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
 import { Star } from "lucide-react"
 
 const workflows = [
-  { command: "/deepresearch", description: "Run a multi-step research pipeline on any scientific question" },
-  { command: "/lit", description: "Search and summarize relevant literature from multiple databases" },
-  { command: "/review", description: "Get an AI-powered peer review of any paper or manuscript" },
-  { command: "/audit", description: "Audit methodology, statistics, and reproducibility of a study" },
-  { command: "/replicate", description: "Attempt to reproduce key findings with available data" },
-  { command: "/compare", description: "Compare and contrast multiple papers side by side" },
-  { command: "/draft", description: "Draft a manuscript section from your research notes and sources" },
-  { command: "/autoresearch", description: "Autonomous research loop that iterates until a question is answered" },
-  { command: "/watch", description: "Monitor topics or authors for new publications and preprints" },
+  { command: "/deepresearch", description: "Multi-agent investigation across papers, web, and code" },
+  { command: "/lit", description: "Literature review from primary sources with consensus mapping" },
+  { command: "/review", description: "Simulated peer review with severity scores and a revision plan" },
+  { command: "/audit", description: "Paper-to-code mismatch audit for reproducibility claims" },
+  { command: "/replicate", description: "Replication plan and execution in a sandboxed Docker container" },
+  { command: "/compare", description: "Side-by-side source comparison with agreement and conflict matrix" },
+  { command: "/draft", description: "Polished paper-style draft with inline citations from findings" },
+  { command: "/autoresearch", description: "Autonomous loop: hypothesize, experiment, measure, repeat" },
+  { command: "/watch", description: "Recurring monitor for new papers, code, or product updates" },
 ]
 
 const agents = [
-  { name: "Researcher", description: "Searches databases, reads papers, extracts findings" },
-  { name: "Reviewer", description: "Evaluates methodology, identifies gaps, checks claims" },
-  { name: "Writer", description: "Synthesizes sources into structured prose and citations" },
-  { name: "Verifier", description: "Cross-references claims, checks data, validates results" },
+  { name: "Researcher", description: "Hunts for evidence across papers, the web, repos, and docs" },
+  { name: "Reviewer", description: "Grades claims by severity, flags gaps, and suggests revisions" },
+  { name: "Writer", description: "Structures notes into briefs, drafts, and paper-style output" },
+  { name: "Verifier", description: "Checks every citation, verifies URLs, removes dead links" },
 ]
 
 const sources = [
-  { name: "AlphaXiv", description: "Real-time access to arXiv papers with community annotations", href: "https://alphaxiv.org" },
-  { name: "Web search", description: "Search the open web for supplementary context and data" },
-  { name: "Preview", description: "More source integrations coming soon" },
+  { name: "AlphaXiv", description: "Paper search, Q&A, code reading, and persistent annotations", href: "https://alphaxiv.org" },
+  { name: "Web search", description: "Searches via Gemini or Perplexity" },
+  { name: "Preview", description: "Browser and PDF export of generated artifacts" },
 ]
 
 const terminalCommands = [
-  { command: "feynman /deepresearch \"What causes Alzheimer's disease?\"", description: "Run a multi-step deep research pipeline" },
-  { command: "feynman /lit \"CRISPR gene therapy 2024\"", description: "Search and summarize recent literature" },
-  { command: "feynman /review ./my-paper.pdf", description: "Get an AI peer review of your manuscript" },
-  { command: "feynman /audit 2401.12345", description: "Audit a paper's methodology and statistics" },
-  { command: "feynman /watch \"transformer architectures\"", description: "Monitor a topic for new publications" },
+  { command: 'feynman "what do we know about scaling laws"', description: "Cited research brief from papers and web" },
+  { command: 'feynman deepresearch "mechanistic interpretability"', description: "Multi-agent deep dive with synthesis and verification" },
+  { command: 'feynman lit "RLHF alternatives"', description: "Literature review with consensus and open questions" },
+  { command: "feynman audit 2401.12345", description: "Paper claims vs. what the code actually does" },
+  { command: 'feynman replicate "chain-of-thought improves math"', description: "Replication plan, compute target, experiment execution" },
 ]
 ---
 
-<Layout title="Feynman - The open source AI research agent" active="home">
+<Layout title="Feynman — The open source AI research agent" active="home">
   <div class="mx-auto max-w-5xl px-6">
 
-    <!-- Hero -->
     <section class="flex flex-col items-center gap-8 pb-16 pt-20 text-center">
       <div class="flex max-w-3xl flex-col gap-4">
         <h1 class="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
           The open source AI<br />research agent
         </h1>
         <p class="mx-auto max-w-2xl text-lg text-muted-foreground">
-          Discover, analyze, and synthesize scientific literature from your terminal.
-          Feynman orchestrates AI agents to do the heavy lifting so you can focus on what matters.
+          Reads papers, searches the web, runs experiments, and cites every claim. All locally on your computer.
         </p>
       </div>
 
@@ -60,7 +56,6 @@ const terminalCommands = [
           id="install-cmd"
           class="group flex items-center gap-3 rounded-lg bg-muted px-4 py-2.5 font-mono text-sm transition-colors hover:bg-muted/80 cursor-pointer"
         >
-          <span class="text-muted-foreground">$</span>
           <span>curl -fsSL https://feynman.is/install | bash</span>
           <svg
             id="copy-icon"
@@ -87,10 +82,8 @@ const terminalCommands = [
         </button>
 
         <div class="flex items-center gap-3">
-          <a href="/docs">
-            <Button client:load size="lg">
-              Get Started
-            </Button>
+          <a href="/docs/getting-started/installation">
+            <Button client:load size="lg">Get Started</Button>
           </a>
           <a href="https://github.com/getcompanion-ai/feynman" target="_blank" rel="noopener noreferrer" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
             GitHub
@@ -102,27 +95,22 @@ const terminalCommands = [
         </div>
       </div>
 
-      <img src="/hero.png" class="w-full" alt="Feynman terminal demo" />
+      <img src="/hero.png" class="w-full" alt="Feynman CLI" />
     </section>
 
-
-    <!-- Terminal demo -->
     <section class="py-16">
       <div class="flex flex-col items-center gap-8 text-center">
         <div class="flex flex-col gap-2">
-          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Powerful from the command line</h2>
-          <p class="text-muted-foreground">Run research workflows with simple commands.</p>
+          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">What you type &rarr; what happens</h2>
+          <p class="text-muted-foreground">Ask a question or run a workflow. Every answer is cited.</p>
         </div>
         <Card client:load className="w-full text-left">
           <CardContent client:load>
             <div class="flex flex-col gap-3 font-mono text-sm">
               {terminalCommands.map((cmd) => (
                 <div class="flex flex-col gap-0.5">
-                  <div>
-                    <span class="text-muted-foreground">$ </span>
-                    <span class="text-primary">{cmd.command}</span>
-                  </div>
-                  <div class="text-xs text-muted-foreground">{cmd.description}</div>
+                  <span class="text-primary">{cmd.command}</span>
+                  <span class="text-xs text-muted-foreground">{cmd.description}</span>
                 </div>
               ))}
             </div>
@@ -131,13 +119,11 @@ const terminalCommands = [
       </div>
     </section>
 
-
-    <!-- Workflows -->
     <section class="py-16">
       <div class="flex flex-col items-center gap-8 text-center">
         <div class="flex flex-col gap-2">
-          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Built-in workflows</h2>
-          <p class="text-muted-foreground">Pre-configured research workflows you can run with a single command.</p>
+          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Workflows</h2>
+          <p class="text-muted-foreground">Slash commands or natural language. Your call.</p>
         </div>
         <div class="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {workflows.map((wf) => (
@@ -152,13 +138,11 @@ const terminalCommands = [
       </div>
     </section>
 
-
-    <!-- Agents -->
     <section class="py-16">
       <div class="flex flex-col items-center gap-8 text-center">
         <div class="flex flex-col gap-2">
-          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Specialized agents</h2>
-          <p class="text-muted-foreground">Each agent is purpose-built for a specific part of the research process.</p>
+          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Agents</h2>
+          <p class="text-muted-foreground">You ask a question. The right team assembles.</p>
         </div>
         <div class="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {agents.map((agent) => (
@@ -173,13 +157,11 @@ const terminalCommands = [
       </div>
     </section>
 
-
-    <!-- Sources -->
     <section class="py-16">
       <div class="flex flex-col items-center gap-8 text-center">
         <div class="flex flex-col gap-2">
-          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Connected sources</h2>
-          <p class="text-muted-foreground">Pull data from multiple sources to build a complete picture.</p>
+          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Sources</h2>
+          <p class="text-muted-foreground">Where Feynman finds information.</p>
         </div>
         <div class="grid w-full gap-4 sm:grid-cols-3">
           {sources.map((source) => (
@@ -187,7 +169,7 @@ const terminalCommands = [
               <CardHeader client:load className="items-center">
                 <CardTitle client:load>
                   {source.href ? (
-                    <a href={source.href} target="_blank" rel="noopener noreferrer" class="underline underline-offset-4 hover:text-primary">
+                    <a href={source.href} target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">
                       {source.name}
                     </a>
                   ) : (
@@ -202,43 +184,31 @@ const terminalCommands = [
       </div>
     </section>
 
-
-    <!-- Compute -->
     <section class="py-16">
       <div class="flex flex-col items-center gap-8 text-center">
         <div class="flex flex-col gap-2">
-          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Sandboxed compute</h2>
-          <p class="text-muted-foreground">Execute code and run experiments in isolated environments.</p>
+          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Compute</h2>
+          <p class="text-muted-foreground">Experiments run in sandboxed Docker containers. Your code stays local.</p>
         </div>
         <Card client:load size="sm" className="w-full max-w-md text-center">
           <CardHeader client:load className="items-center">
-            <CardTitle client:load>Docker</CardTitle>
-            <CardDescription client:load>
-              Run code, install packages, and execute experiments in secure Docker containers.
-              Results are streamed back to your terminal in real time.
-            </CardDescription>
+            <CardTitle client:load><a href="https://www.docker.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Docker</a></CardTitle>
+            <CardDescription client:load>Isolated container execution for safe local experiments</CardDescription>
           </CardHeader>
         </Card>
       </div>
     </section>
 
-
-    <!-- Footer CTA -->
     <section class="flex flex-col items-center gap-6 py-20 text-center">
-      <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Start researching</h2>
-      <p class="max-w-lg text-muted-foreground">
-        Install Feynman in seconds and run your first research workflow from the terminal.
+      <p class="text-muted-foreground">
+        Built on <a href="https://github.com/badlogic/pi-mono" class="text-primary hover:underline">Pi</a> and <a href="https://www.alphaxiv.org/" class="text-primary hover:underline">alphaXiv</a>. MIT licensed.
       </p>
       <div class="flex items-center gap-3">
-        <a href="/docs">
-          <Button client:load size="lg">
-            Read the Docs
-          </Button>
+        <a href="/docs/getting-started/installation">
+          <Button client:load size="lg">Get Started</Button>
         </a>
         <a href="https://github.com/getcompanion-ai/feynman" target="_blank" rel="noopener noreferrer">
-          <Button client:load variant="outline" size="lg">
-            View on GitHub
-          </Button>
+          <Button client:load variant="outline" size="lg">View on GitHub</Button>
         </a>
       </div>
     </section>
@@ -248,8 +218,7 @@ const terminalCommands = [
 
 <script is:inline>
   document.getElementById("install-cmd").addEventListener("click", function () {
-    var text = "curl -fsSL https://feynman.is/install | bash"
-    navigator.clipboard.writeText(text).then(function () {
+    navigator.clipboard.writeText("curl -fsSL https://feynman.is/install | bash").then(function () {
       var copyIcon = document.getElementById("copy-icon")
       var checkIcon = document.getElementById("check-icon")
       copyIcon.classList.add("hidden")

@@ -218,17 +218,20 @@ const terminalCommands = [
   initCopyBtn()
   document.addEventListener("astro:after-swap", initCopyBtn)
 
-  fetch("https://api.github.com/repos/getcompanion-ai/feynman")
-    .then(function(r) { return r.json() })
-    .then(function(d) {
-      if (d.stargazers_count !== undefined) {
-        var el = document.getElementById("star-count")
-        if (el) {
+  function fetchStars() {
+    var el = document.getElementById("star-count")
+    if (!el) return
+    fetch("https://api.github.com/repos/getcompanion-ai/feynman")
+      .then(function(r) { return r.json() })
+      .then(function(d) {
+        if (d.stargazers_count !== undefined) {
           el.textContent = d.stargazers_count >= 1000 ? (d.stargazers_count / 1000).toFixed(1) + "k" : String(d.stargazers_count)
           var badge = document.getElementById("star-badge")
           if (badge) badge.classList.remove("hidden")
         }
-      }
-    })
-    .catch(function() {})
+      })
+      .catch(function() {})
+  }
+  fetchStars()
+  document.addEventListener("astro:after-swap", fetchStars)
 </script>

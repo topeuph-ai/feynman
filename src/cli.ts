@@ -29,7 +29,7 @@ import { printSearchStatus } from "./search/commands.js";
 import { runDoctor, runStatus } from "./setup/doctor.js";
 import { setupPreviewDependencies } from "./setup/preview.js";
 import { runSetup } from "./setup/setup.js";
-import { printAsciiHeader, printInfo, printPanel, printSection } from "./ui/terminal.js";
+import { ASH, printAsciiHeader, printInfo, printPanel, printSection, RESET, SAGE } from "./ui/terminal.js";
 import {
 	cliCommandSections,
 	formatCliWorkflowUsage,
@@ -43,9 +43,6 @@ const TOP_LEVEL_COMMANDS = new Set(topLevelCommandNames);
 function printHelpLine(usage: string, description: string): void {
 	const width = 30;
 	const padding = Math.max(1, width - usage.length);
-	const RESET = "\x1b[0m";
-	const SAGE = `\x1b[38;2;167;192;128m`;
-	const ASH = `\x1b[38;2;133;146;137m`;
 	console.log(`  ${SAGE}${usage}${RESET}${" ".repeat(padding)}${ASH}${description}${RESET}`);
 }
 

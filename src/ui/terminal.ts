@@ -1,6 +1,6 @@
 import { FEYNMAN_ASCII_LOGO } from "../../logo.mjs";
 
-const RESET = "\x1b[0m";
+export const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
 
@@ -11,9 +11,9 @@ function rgb(red: number, green: number, blue: number): string {
 // Match the outer CLI to the bundled Feynman Pi theme instead of generic magenta panels.
 const INK = rgb(211, 198, 170);
 const STONE = rgb(157, 169, 160);
-const ASH = rgb(133, 146, 137);
+export const ASH = rgb(133, 146, 137);
 const DARK_ASH = rgb(92, 106, 114);
-const SAGE = rgb(167, 192, 128);
+export const SAGE = rgb(167, 192, 128);
 const TEAL = rgb(127, 187, 179);
 const ROSE = rgb(230, 126, 128);
 

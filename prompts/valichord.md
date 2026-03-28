@@ -21,44 +21,61 @@ If the user has not yet run a replication, suggest running `/replicate` first an
 
 Using the `researcher` agent:
 - If the deposit is a directory, ZIP it: include all source files, data files, requirements/environment specs, and any existing results
-- Compute a SHA-256 hash of the ZIP for local reference
 - Save the ZIP to `outputs/<slug>-deposit.zip`
 
 ---
 
-## Step 3: Upload to ValiChord
+## Step 3: Submit to ValiChord
 
-Using the `verifier` agent, submit the deposit via ValiChord's chunked upload API:
+Using the `verifier` agent, submit the deposit via the single-shot validation endpoint:
 
+```
+POST <base_url>/validate
+Content-Type: multipart/form-data
+Field: file = <deposit ZIP>
+```
 
-POST <base_url>/upload-chunk
+Response: `{ "job_id": "..." }`
 
-
-Upload in 1MB chunks. Poll `GET <base_url>/status/<job_id>` until status is `complete`. Handle errors gracefully — if the endpoint is unreachable, report clearly and stop.
-
-Save the `job_id` to `outputs/<slug>-valichord.json`.
+Save the `job_id` to `outputs/<slug>-valichord.json`. Handle errors gracefully — if the endpoint is unreachable, report clearly and stop.
 
 ---
 
-## Step 4: Retrieve and save the Harmony Record
+## Step 4: Poll for results
 
-Once the job is complete, fetch the results:
+Poll `GET <base_url>/result/<job_id>` until `status` is `"done"` (or `"error"`).
 
+Response shape when done:
 
-GET <base_url>/download/<job_id>
-
+```json
+{
+  "status": "done",
+  "findings": [...],
+  "harmony_record_draft": {
+    "outcome": { "type": "Reproduced" },
+    "data_hash": "<sha256 hex>",
+    "findings_summary": { "critical": 0, "significant": 0, "low_confidence": 0, "total": 0 },
+    "harmony_record_hash": "<uhCkk... ActionHash or null>",
+    "harmony_record_url": "<gateway URL or null>"
+  },
+  "download_url": "/download/<job_id>"
+}
+```
 
 Save the full response to `outputs/<slug>-harmony-record.json`.
+
+To download the detailed report ZIP: `GET <base_url>/download/<job_id>`
 
 ---
 
 ## Step 5: Report findings
 
 Present a summary to the user:
-- Job ID and deposit hash
-- Validation findings (CRITICAL / SIGNIFICANT / LOW CONFIDENCE issues)
-- Whether a Harmony Record was successfully generated
-- Direct path to the saved record
+- Job ID and deposit hash (`harmony_record_draft.data_hash`)
+- Outcome (`harmony_record_draft.outcome.type`: `Reproduced`, `PartiallyReproduced`, or `FailedToReproduce`)
+- Findings summary (CRITICAL / SIGNIFICANT / LOW CONFIDENCE counts)
+- Harmony Record hash and URL if present (non-null means it was written to the Holochain network)
+- Path to the saved record
 
 Note any discrepancies between the researcher's deposit and validator findings, if this was a validator submission.
 
@@ -68,4 +85,5 @@ Note any discrepancies between the researcher's deposit and validator findings, 
 
 - ValiChord's blind commit-reveal protocol means validators cannot see researcher findings before committing their own, and vice versa. Do not attempt to pre-read results from the other party.
 - AI agents (including Feynman itself) are valid validators in ValiChord's protocol.
+- `harmony_record_hash` is null when the Holochain conductor is not running — analysis results are still returned.
 - ValiChord repo: https://github.com/topeuph-ai/ValiChord

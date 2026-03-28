@@ -6,12 +6,44 @@ import { spawnSync } from "node:child_process";
 const appRoot = resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(readFileSync(resolve(appRoot, "package.json"), "utf8"));
 const packageLockPath = resolve(appRoot, "package-lock.json");
-const bundledNodeVersion = process.env.FEYNMAN_BUNDLED_NODE_VERSION ?? process.version.slice(1);
+const minBundledNodeVersion = packageJson.engines?.node?.replace(/^>=/, "").trim() || process.version.slice(1);
+
+function parseSemver(version) {
+	const [major = "0", minor = "0", patch = "0"] = version.split(".");
+	return [Number.parseInt(major, 10) || 0, Number.parseInt(minor, 10) || 0, Number.parseInt(patch, 10) || 0];
+}
+
+function compareSemver(left, right) {
+	for (let index = 0; index < 3; index += 1) {
+		const diff = left[index] - right[index];
+		if (diff !== 0) return diff;
+	}
+	return 0;
+}
 
 function fail(message) {
 	console.error(`[feynman] ${message}`);
 	process.exit(1);
 }
+
+function resolveBundledNodeVersion() {
+	const requestedNodeVersion = process.env.FEYNMAN_BUNDLED_NODE_VERSION?.trim();
+	if (requestedNodeVersion) {
+		if (compareSemver(parseSemver(requestedNodeVersion), parseSemver(minBundledNodeVersion)) < 0) {
+			fail(
+				`FEYNMAN_BUNDLED_NODE_VERSION=${requestedNodeVersion} is below the supported floor ${minBundledNodeVersion}`,
+			);
+		}
+		return requestedNodeVersion;
+	}
+
+	const currentNodeVersion = process.version.slice(1);
+	return compareSemver(parseSemver(currentNodeVersion), parseSemver(minBundledNodeVersion)) < 0
+		? minBundledNodeVersion
+		: currentNodeVersion;
+}
+
+const bundledNodeVersion = resolveBundledNodeVersion();
 
 function resolveCommand(command) {
 	if (process.platform === "win32" && command === "npm") {

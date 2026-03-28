@@ -1,5 +1,5 @@
 param(
-  [string]$Version = "edge",
+  [string]$Version = "latest",
   [ValidateSet("User", "Repo")]
   [string]$Scope = "User",
   [string]$TargetDir = ""
@@ -11,15 +11,25 @@ function Normalize-Version {
   param([string]$RequestedVersion)
 
   if (-not $RequestedVersion) {
-    return "edge"
+    return "latest"
   }
 
   switch ($RequestedVersion.ToLowerInvariant()) {
-    "edge" { return "edge" }
     "latest" { return "latest" }
     "stable" { return "latest" }
+    "edge" { throw "The edge channel has been removed. Use the default installer for the latest tagged release or pass an exact version." }
     default { return $RequestedVersion.TrimStart("v") }
   }
+}
+
+function Resolve-LatestReleaseVersion {
+  $page = Invoke-WebRequest -Uri "https://github.com/getcompanion-ai/feynman/releases/latest"
+  $match = [regex]::Match($page.Content, 'releases/tag/v([0-9][^"''<>\s]*)')
+  if (-not $match.Success) {
+    throw "Failed to resolve the latest Feynman release version."
+  }
+
+  return $match.Groups[1].Value
 }
 
 function Resolve-VersionMetadata {
@@ -27,21 +37,8 @@ function Resolve-VersionMetadata {
 
   $normalizedVersion = Normalize-Version -RequestedVersion $RequestedVersion
 
-  if ($normalizedVersion -eq "edge") {
-    return [PSCustomObject]@{
-      ResolvedVersion = "edge"
-      GitRef = "main"
-      DownloadUrl = "https://github.com/getcompanion-ai/feynman/archive/refs/heads/main.zip"
-    }
-  }
-
   if ($normalizedVersion -eq "latest") {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/getcompanion-ai/feynman/releases/latest"
-    if (-not $release.tag_name) {
-      throw "Failed to resolve the latest Feynman release version."
-    }
-
-    $resolvedVersion = $release.tag_name.TrimStart("v")
+    $resolvedVersion = Resolve-LatestReleaseVersion
   } else {
     $resolvedVersion = $normalizedVersion
   }

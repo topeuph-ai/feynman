@@ -2,7 +2,7 @@
 
 set -eu
 
-VERSION="${1:-edge}"
+VERSION="${1:-latest}"
 INSTALL_BIN_DIR="${FEYNMAN_INSTALL_BIN_DIR:-$HOME/.local/bin}"
 INSTALL_APP_DIR="${FEYNMAN_INSTALL_APP_DIR:-$HOME/.local/share/feynman}"
 SKIP_PATH_UPDATE="${FEYNMAN_INSTALL_SKIP_PATH_UPDATE:-0}"
@@ -54,11 +54,15 @@ run_with_spinner() {
 
 normalize_version() {
   case "$1" in
-    "" | edge)
-      printf 'edge\n'
+    "")
+      printf 'latest\n'
       ;;
     latest | stable)
       printf 'latest\n'
+      ;;
+    edge)
+      echo "The edge channel has been removed. Use the default installer for the latest tagged release or pass an exact version." >&2
+      exit 1
       ;;
     v*)
       printf '%s\n' "${1#v}"
@@ -184,36 +188,9 @@ warn_command_conflict() {
 resolve_release_metadata() {
   normalized_version="$(normalize_version "$VERSION")"
 
-  if [ "$normalized_version" = "edge" ]; then
-    release_json="$(download_text "https://api.github.com/repos/getcompanion-ai/feynman/releases/tags/edge")"
-    asset_url=""
-
-    for candidate in $(printf '%s\n' "$release_json" | sed -n 's/.*"browser_download_url":[[:space:]]*"\([^"]*\)".*/\1/p'); do
-      case "$candidate" in
-        */feynman-*-${asset_target}.${archive_extension})
-          asset_url="$candidate"
-          break
-          ;;
-      esac
-    done
-
-    if [ -z "$asset_url" ]; then
-      echo "Failed to resolve the latest Feynman edge bundle." >&2
-      exit 1
-    fi
-
-    archive_name="${asset_url##*/}"
-    bundle_name="${archive_name%.$archive_extension}"
-    resolved_version="${bundle_name#feynman-}"
-    resolved_version="${resolved_version%-${asset_target}}"
-
-    printf '%s\n%s\n%s\n%s\n' "$resolved_version" "$bundle_name" "$archive_name" "$asset_url"
-    return
-  fi
-
   if [ "$normalized_version" = "latest" ]; then
-    release_json="$(download_text "https://api.github.com/repos/getcompanion-ai/feynman/releases/latest")"
-    resolved_version="$(printf '%s\n' "$release_json" | sed -n 's/.*"tag_name":[[:space:]]*"v\([^"]*\)".*/\1/p' | head -n 1)"
+    release_page="$(download_text "https://github.com/getcompanion-ai/feynman/releases/latest")"
+    resolved_version="$(printf '%s\n' "$release_page" | sed -n 's@.*releases/tag/v\([0-9][^"<>[:space:]]*\).*@\1@p' | head -n 1)"
 
     if [ -z "$resolved_version" ]; then
       echo "Failed to resolve the latest Feynman release version." >&2

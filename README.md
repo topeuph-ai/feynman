@@ -13,26 +13,52 @@
 
 ### Installation
 
+**macOS / Linux:**
+
 ```bash
 curl -fsSL https://feynman.is/install | bash
 ```
 
-If you install via `pnpm` or `bun` instead of the standalone bundle, Feynman requires Node.js `20.18.1` or newer.
+**Windows (PowerShell):**
+
+```powershell
+irm https://feynman.is/install.ps1 | iex
+```
+
+The one-line installer fetches the latest tagged release. To pin a version, pass it explicitly, for example `curl -fsSL https://feynman.is/install | bash -s -- 0.2.15`.
+
+If you install via `pnpm` or `bun` instead of the standalone bundle, Feynman requires Node.js `20.19.0` or newer.
 
 ### Skills Only
 
 If you want just the research skills without the full terminal app:
 
+**macOS / Linux:**
+
 ```bash
 curl -fsSL https://feynman.is/install-skills | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://feynman.is/install-skills.ps1 | iex
 ```
 
 That installs the skill library into `~/.codex/skills/feynman`.
 
 For a repo-local install instead:
 
+**macOS / Linux:**
+
 ```bash
 curl -fsSL https://feynman.is/install-skills | bash -s -- --repo
+```
+
+**Windows (PowerShell):**
+
+```powershell
+& ([scriptblock]::Create((irm https://feynman.is/install-skills.ps1))) -Scope Repo
 ```
 
 That installs into `.agents/skills/feynman` under the current repository.
@@ -56,6 +82,9 @@ $ feynman audit 2401.12345
 
 $ feynman replicate "chain-of-thought improves math"
 → Replicates experiments on local or cloud GPUs
+
+$ feynman valichord "study-id-or-topic"
+→ Runs the ValiChord reproducibility workflow or checks existing Harmony Records
 ```
 
 ---
@@ -71,6 +100,7 @@ Ask naturally or use slash commands as shortcuts.
 | `/review <artifact>` | Simulated peer review with severity and revision plan |
 | `/audit <item>` | Paper vs. codebase mismatch audit |
 | `/replicate <paper>` | Replicate experiments on local or cloud GPUs |
+| `/valichord <study-or-topic>` | Reproducibility attestation workflow and Harmony Record lookup |
 | `/compare <topic>` | Source comparison matrix |
 | `/draft <topic>` | Paper-style draft from research findings |
 | `/autoresearch <idea>` | Autonomous experiment loop |
@@ -110,12 +140,16 @@ Built on [Pi](https://github.com/badlogic/pi-mono) for the agent runtime, [alpha
 
 ### Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
+
 ```bash
 git clone https://github.com/getcompanion-ai/feynman.git
 cd feynman
 nvm use || nvm install
-pnpm install
-pnpm start
+npm install
+npm test
+npm run typecheck
+npm run build
 ```
 
 [Docs](https://feynman.is/docs) · [MIT License](LICENSE)

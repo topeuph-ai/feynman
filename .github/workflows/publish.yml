@@ -52,6 +52,7 @@ jobs:
 
   build-native-bundles:
     needs: version-check
+    if: needs.version-check.outputs.should_publish == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -96,47 +97,6 @@ jobs:
         with:
           name: native-${{ matrix.id }}
           path: dist/release/*
-
-  release-edge:
-    needs:
-      - version-check
-      - build-native-bundles
-    if: needs.build-native-bundles.result == 'success'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: release-assets
-          merge-multiple: true
-      - shell: bash
-        env:
-          GH_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.version-check.outputs.version }}
-        run: |
-          NOTES="Rolling Feynman bundles from main for the curl/PowerShell installer."
-          if gh release view edge >/dev/null 2>&1; then
-            gh release view edge --json assets --jq '.assets[].name' | while IFS= read -r asset; do
-              [ -n "$asset" ] || continue
-              gh release delete-asset edge "$asset" --yes
-            done
-            gh release upload edge release-assets/*
-            gh release edit edge \
-              --title "edge" \
-              --notes "$NOTES" \
-              --prerelease \
-              --draft=false \
-              --target "$GITHUB_SHA"
-          else
-            gh release create edge release-assets/* \
-              --title "edge" \
-              --notes "$NOTES" \
-              --prerelease \
-              --latest=false \
-              --target "$GITHUB_SHA"
-          fi
 
   release-github:
     needs:

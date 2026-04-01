@@ -251,7 +251,7 @@ declare_deviation(input: DeclareDeviationInput)
 
 Only hashes ever leave DNA 1 — the raw data and protocol text remain on the researcher's device.
 
-**Repository Readiness Checker**: ValiChord also ships a standalone audit tool that scans a research repository for 30+ reproducibility failure modes before submission — missing dependency files, absolute paths, undeclared environment requirements, data documentation gaps, human-subjects data exposure risks, and more. Feynman is the natural interface for this tool: running the audit, interpreting findings in plain language, guiding the researcher through fixes, and confirming the repository meets the bar for independent validation. See: https://github.com/topeuph-ai/ValiChord
+**Repository Readiness Checker**: ValiChord also ships a standalone audit tool that scans a research repository for 100+ reproducibility failure modes before submission — missing dependency files, absolute paths, undeclared environment requirements, data documentation gaps, human-subjects data exposure risks, and more. Feynman is the natural interface for this tool: running the audit, interpreting findings in plain language, guiding the researcher through fixes, and confirming the repository meets the bar for independent validation. See: https://github.com/topeuph-ai/ValiChord
 
 ---
 

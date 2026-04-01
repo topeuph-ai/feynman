@@ -2,7 +2,7 @@
 
 set -eu
 
-VERSION="edge"
+VERSION="latest"
 SCOPE="${FEYNMAN_SKILLS_SCOPE:-user}"
 TARGET_DIR="${FEYNMAN_SKILLS_DIR:-}"
 
@@ -12,11 +12,15 @@ step() {
 
 normalize_version() {
   case "$1" in
-    "" | edge)
-      printf 'edge\n'
+    "")
+      printf 'latest\n'
       ;;
     latest | stable)
       printf 'latest\n'
+      ;;
+    edge)
+      echo "The edge channel has been removed. Use the default installer for the latest tagged release or pass an exact version." >&2
+      exit 1
       ;;
     v*)
       printf '%s\n' "${1#v}"
@@ -73,14 +77,9 @@ download_text() {
 resolve_version() {
   normalized_version="$(normalize_version "$VERSION")"
 
-  if [ "$normalized_version" = "edge" ]; then
-    printf 'edge\nmain\n'
-    return
-  fi
-
   if [ "$normalized_version" = "latest" ]; then
-    release_json="$(download_text "https://api.github.com/repos/getcompanion-ai/feynman/releases/latest")"
-    resolved_version="$(printf '%s\n' "$release_json" | sed -n 's/.*"tag_name":[[:space:]]*"v\([^"]*\)".*/\1/p' | head -n 1)"
+    release_page="$(download_text "https://github.com/getcompanion-ai/feynman/releases/latest")"
+    resolved_version="$(printf '%s\n' "$release_page" | sed -n 's@.*releases/tag/v\([0-9][^"<>[:space:]]*\).*@\1@p' | head -n 1)"
 
     if [ -z "$resolved_version" ]; then
       echo "Failed to resolve the latest Feynman release version." >&2
@@ -125,7 +124,7 @@ while [ $# -gt 0 ]; do
       ;;
     --dir)
       if [ $# -lt 2 ]; then
-        echo "Usage: install-skills.sh [edge|stable|latest|<version>] [--user|--repo] [--dir <path>]" >&2
+        echo "Usage: install-skills.sh [stable|latest|<version>] [--user|--repo] [--dir <path>]" >&2
         exit 1
       fi
       TARGET_DIR="$2"
@@ -136,7 +135,7 @@ while [ $# -gt 0 ]; do
       ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: install-skills.sh [edge|stable|latest|<version>] [--user|--repo] [--dir <path>]" >&2
+      echo "Usage: install-skills.sh [stable|latest|<version>] [--user|--repo] [--dir <path>]" >&2
       exit 1
       ;;
   esac

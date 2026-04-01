@@ -1,11 +1,11 @@
 {
   "name": "@companion-ai/feynman",
-  "version": "0.2.14",
+  "version": "0.2.16",
   "description": "Research-first CLI agent built on Pi and alphaXiv",
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=20.18.1"
+    "node": ">=20.19.0"
   },
   "bin": {
     "feynman": "bin/feynman.js"
@@ -19,6 +19,7 @@
     ".feynman/settings.json",
     ".feynman/SYSTEM.md",
     ".feynman/themes/",
+    ".feynman/vendor-overrides/",
     "extensions/",
     "prompts/",
     "logo.mjs",
@@ -26,6 +27,7 @@
     "scripts/",
     "skills/",
     "AGENTS.md",
+    "CONTRIBUTING.md",
     "README.md",
     ".env.example"
   ],
@@ -34,7 +36,7 @@
     "build": "tsc -p tsconfig.build.json",
     "build:native-bundle": "node ./scripts/build-native-bundle.mjs",
     "dev": "tsx src/index.ts",
-    "prepack": "npm run build && node ./scripts/prepare-runtime-workspace.mjs",
+    "prepack": "node ./scripts/clean-publish-artifacts.mjs && npm run build && node ./scripts/prepare-runtime-workspace.mjs",
     "start": "tsx src/index.ts",
     "start:dist": "node ./bin/feynman.js",
     "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
@@ -59,8 +61,8 @@
   },
   "dependencies": {
     "@companion-ai/alpha-hub": "^0.1.2",
-    "@mariozechner/pi-ai": "^0.62.0",
-    "@mariozechner/pi-coding-agent": "^0.62.0",
+    "@mariozechner/pi-ai": "^0.64.0",
+    "@mariozechner/pi-coding-agent": "^0.64.0",
     "@sinclair/typebox": "^0.34.48",
     "dotenv": "^17.3.1"
   },

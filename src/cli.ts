@@ -11,14 +11,17 @@ import {
 	login as loginAlpha,
 	logout as logoutAlpha,
 } from "@companion-ai/alpha-hub/lib";
-import { AuthStorage, DefaultPackageManager, ModelRegistry, SettingsManager } from "@mariozechner/pi-coding-agent";
+import { DefaultPackageManager, SettingsManager } from "@mariozechner/pi-coding-agent";
 
 import { syncBundledAssets } from "./bootstrap/sync.js";
 import { ensureFeynmanHome, getDefaultSessionDir, getFeynmanAgentDir, getFeynmanHome } from "./config/paths.js";
 import { launchPiChat } from "./pi/launch.js";
 import { CORE_PACKAGE_SOURCES, getOptionalPackagePresetSources, listOptionalPackagePresets } from "./pi/package-presets.js";
 import { normalizeFeynmanSettings, normalizeThinkingLevel, parseModelSpec } from "./pi/settings.js";
+import { applyFeynmanPackageManagerEnv } from "./pi/runtime.js";
+import { getConfiguredServiceTier, normalizeServiceTier, setConfiguredServiceTier } from "./model/service-tier.js";
 import {
+	authenticateModelProvider,
 	getCurrentModelSpec,
 	loginModelProvider,
 	logoutModelProvider,
@@ -30,6 +33,7 @@ import { runDoctor, runStatus } from "./setup/doctor.js";
 import { setupPreviewDependencies } from "./setup/preview.js";
 import { runSetup } from "./setup/setup.js";
 import { ASH, printAsciiHeader, printInfo, printPanel, printSection, RESET, SAGE } from "./ui/terminal.js";
+import { createModelRegistry } from "./model/registry.js";
 import {
 	cliCommandSections,
 	formatCliWorkflowUsage,
@@ -124,7 +128,13 @@ async function handleModelCommand(subcommand: string | undefined, args: string[]
 	}
 
 	if (subcommand === "login") {
-		await loginModelProvider(feynmanAuthPath, args[0], feynmanSettingsPath);
+		if (args[0]) {
+			// Specific provider given - use OAuth login directly
+			await loginModelProvider(feynmanAuthPath, args[0], feynmanSettingsPath);
+		} else {
+			// No provider specified - show auth method choice
+			await authenticateModelProvider(feynmanAuthPath, feynmanSettingsPath);
+		}
 		return;
 	}
 
@@ -142,10 +152,34 @@ async function handleModelCommand(subcommand: string | undefined, args: string[]
 		return;
 	}
 
+	if (subcommand === "tier") {
+		const requested = args[0];
+		if (!requested) {
+			console.log(getConfiguredServiceTier(feynmanSettingsPath) ?? "not set");
+			return;
+		}
+
+		if (requested === "unset" || requested === "clear" || requested === "off") {
+			setConfiguredServiceTier(feynmanSettingsPath, undefined);
+			console.log("Cleared service tier override");
+			return;
+		}
+
+		const tier = normalizeServiceTier(requested);
+		if (!tier) {
+			throw new Error("Usage: feynman model tier <auto|default|flex|priority|standard_only|unset>");
+		}
+
+		setConfiguredServiceTier(feynmanSettingsPath, tier);
+		console.log(`Service tier set to ${tier}`);
+		return;
+	}
+
 	throw new Error(`Unknown model command: ${subcommand}`);
 }
 
 async function handleUpdateCommand(workingDir: string, feynmanAgentDir: string, source?: string): Promise<void> {
+	applyFeynmanPackageManagerEnv(feynmanAgentDir);
 	const settingsManager = SettingsManager.create(workingDir, feynmanAgentDir);
 	const packageManager = new DefaultPackageManager({
 		cwd: workingDir,
@@ -169,6 +203,7 @@ async function handleUpdateCommand(workingDir: string, feynmanAgentDir: string, 
 }
 
 async function handlePackagesCommand(subcommand: string | undefined, args: string[], workingDir: string, feynmanAgentDir: string): Promise<void> {
+	applyFeynmanPackageManagerEnv(feynmanAgentDir);
 	const settingsManager = SettingsManager.create(workingDir, feynmanAgentDir);
 	const configuredSources = new Set(
 		settingsManager
@@ -300,6 +335,7 @@ export async function main(): Promise<void> {
 			model: { type: "string" },
 			"new-session": { type: "boolean" },
 			prompt: { type: "string" },
+			"service-tier": { type: "string" },
 			"session-dir": { type: "string" },
 			"setup-preview": { type: "boolean" },
 			thinking: { type: "string" },
@@ -426,8 +462,15 @@ export async function main(): Promise<void> {
 	}
 
 	const explicitModelSpec = values.model ?? process.env.FEYNMAN_MODEL;
+	const explicitServiceTier = normalizeServiceTier(values["service-tier"] ?? process.env.FEYNMAN_SERVICE_TIER);
+	if ((values["service-tier"] ?? process.env.FEYNMAN_SERVICE_TIER) && !explicitServiceTier) {
+		throw new Error("Unknown service tier. Use auto, default, flex, priority, or standard_only.");
+	}
+	if (explicitServiceTier) {
+		process.env.FEYNMAN_SERVICE_TIER = explicitServiceTier;
+	}
 	if (explicitModelSpec) {
-		const modelRegistry = new ModelRegistry(AuthStorage.create(feynmanAuthPath));
+		const modelRegistry = createModelRegistry(feynmanAuthPath);
 		const explicitModel = parseModelSpec(explicitModelSpec, modelRegistry);
 		if (!explicitModel) {
 			throw new Error(`Unknown model: ${explicitModelSpec}`);

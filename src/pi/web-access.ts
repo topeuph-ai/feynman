@@ -2,12 +2,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
-export type PiWebSearchProvider = "auto" | "perplexity" | "gemini";
+export type PiWebSearchProvider = "auto" | "perplexity" | "exa" | "gemini";
 
 export type PiWebAccessConfig = Record<string, unknown> & {
 	provider?: PiWebSearchProvider;
 	searchProvider?: PiWebSearchProvider;
 	perplexityApiKey?: string;
+	exaApiKey?: string;
 	geminiApiKey?: string;
 	chromeProfile?: string;
 };
@@ -17,6 +18,7 @@ export type PiWebAccessStatus = {
 	searchProvider: PiWebSearchProvider;
 	requestProvider: PiWebSearchProvider;
 	perplexityConfigured: boolean;
+	exaConfigured: boolean;
 	geminiApiConfigured: boolean;
 	chromeProfile?: string;
 	routeLabel: string;
@@ -28,7 +30,7 @@ export function getPiWebSearchConfigPath(home = process.env.HOME ?? homedir()): 
 }
 
 function normalizeProvider(value: unknown): PiWebSearchProvider | undefined {
-	return value === "auto" || value === "perplexity" || value === "gemini" ? value : undefined;
+	return value === "auto" || value === "perplexity" || value === "exa" || value === "gemini" ? value : undefined;
 }
 
 function normalizeNonEmptyString(value: unknown): string | undefined {
@@ -52,6 +54,8 @@ function formatRouteLabel(provider: PiWebSearchProvider): string {
 	switch (provider) {
 		case "perplexity":
 			return "Perplexity";
+		case "exa":
+			return "Exa";
 		case "gemini":
 			return "Gemini";
 		default:
@@ -63,10 +67,12 @@ function formatRouteNote(provider: PiWebSearchProvider): string {
 	switch (provider) {
 		case "perplexity":
 			return "Pi web-access will use Perplexity for search.";
+		case "exa":
+			return "Pi web-access will use Exa for search.";
 		case "gemini":
 			return "Pi web-access will use Gemini API or Gemini Browser.";
 		default:
-			return "Pi web-access will try Perplexity, then Gemini API, then Gemini Browser.";
+			return "Pi web-access will try Perplexity, then Exa, then Gemini API, then Gemini Browser.";
 	}
 }
 
@@ -77,6 +83,7 @@ export function getPiWebAccessStatus(
 	const searchProvider = normalizeProvider(config.searchProvider) ?? "auto";
 	const requestProvider = normalizeProvider(config.provider) ?? searchProvider;
 	const perplexityConfigured = Boolean(normalizeNonEmptyString(config.perplexityApiKey));
+	const exaConfigured = Boolean(normalizeNonEmptyString(config.exaApiKey));
 	const geminiApiConfigured = Boolean(normalizeNonEmptyString(config.geminiApiKey));
 	const chromeProfile = normalizeNonEmptyString(config.chromeProfile);
 	const effectiveProvider = searchProvider;
@@ -86,6 +93,7 @@ export function getPiWebAccessStatus(
 		searchProvider,
 		requestProvider,
 		perplexityConfigured,
+		exaConfigured,
 		geminiApiConfigured,
 		chromeProfile,
 		routeLabel: formatRouteLabel(effectiveProvider),
@@ -101,6 +109,7 @@ export function formatPiWebAccessDoctorLines(
 		`  search route: ${status.routeLabel}`,
 		`  request route: ${status.requestProvider}`,
 		`  perplexity api: ${status.perplexityConfigured ? "configured" : "not configured"}`,
+		`  exa api: ${status.exaConfigured ? "configured" : "not configured"}`,
 		`  gemini api: ${status.geminiApiConfigured ? "configured" : "not configured"}`,
 		`  browser profile: ${status.chromeProfile ?? "default Chromium profile"}`,
 		`  config path: ${status.configPath}`,

@@ -25,6 +25,31 @@ test("getPiWebAccessStatus reads Pi web-access config directly", () => {
 	writeFileSync(
 		configPath,
 		JSON.stringify({
+			provider: "exa",
+			searchProvider: "exa",
+			exaApiKey: "exa_...",
+			chromeProfile: "Profile 2",
+			geminiApiKey: "AIza...",
+		}),
+		"utf8",
+	);
+
+	const status = getPiWebAccessStatus(loadPiWebAccessConfig(configPath), configPath);
+	assert.equal(status.routeLabel, "Exa");
+	assert.equal(status.requestProvider, "exa");
+	assert.equal(status.exaConfigured, true);
+	assert.equal(status.geminiApiConfigured, true);
+	assert.equal(status.perplexityConfigured, false);
+	assert.equal(status.chromeProfile, "Profile 2");
+});
+
+test("getPiWebAccessStatus reads Gemini routes directly", () => {
+	const root = mkdtempSync(join(tmpdir(), "feynman-pi-web-"));
+	const configPath = getPiWebSearchConfigPath(root);
+	mkdirSync(join(root, ".feynman"), { recursive: true });
+	writeFileSync(
+		configPath,
+		JSON.stringify({
 			provider: "gemini",
 			searchProvider: "gemini",
 			chromeProfile: "Profile 2",
@@ -36,6 +61,7 @@ test("getPiWebAccessStatus reads Pi web-access config directly", () => {
 	const status = getPiWebAccessStatus(loadPiWebAccessConfig(configPath), configPath);
 	assert.equal(status.routeLabel, "Gemini");
 	assert.equal(status.requestProvider, "gemini");
+	assert.equal(status.exaConfigured, false);
 	assert.equal(status.geminiApiConfigured, true);
 	assert.equal(status.perplexityConfigured, false);
 	assert.equal(status.chromeProfile, "Profile 2");

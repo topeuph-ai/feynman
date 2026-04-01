@@ -19,8 +19,6 @@ The installer detects your OS and architecture automatically. On macOS it suppor
 
 If you previously installed Feynman via `npm`, `pnpm`, or `bun` and still see local Node.js errors after a curl install, your shell is probably still resolving the older global binary first. Run `which -a feynman`, then `hash -r`, or launch the standalone shim directly with `~/.local/bin/feynman`.
 
-By default, the one-line installer tracks the rolling `edge` channel from `main`.
-
 On **Windows**, open PowerShell as Administrator and run:
 
 ```powershell
@@ -59,25 +57,23 @@ Or install them repo-locally:
 
 These installers download only the `skills/` tree from the Feynman repository. They do not install the Feynman terminal, bundled Node runtime, auth storage, or Pi packages.
 
-## Stable or pinned releases
+## Pinned releases
 
-If you want the latest tagged release instead of the rolling `edge` channel:
+The one-line installer already targets the latest tagged release. To pin an exact version, pass it explicitly:
 
 ```bash
-curl -fsSL https://feynman.is/install | bash -s -- stable
+curl -fsSL https://feynman.is/install | bash -s -- 0.2.16
 ```
 
 On Windows:
 
 ```powershell
-& ([scriptblock]::Create((irm https://feynman.is/install.ps1))) -Version stable
+& ([scriptblock]::Create((irm https://feynman.is/install.ps1))) -Version 0.2.16
 ```
-
-You can also pin an exact version by replacing `stable` with a version such as `0.2.14`.
 
 ## pnpm
 
-If you already have Node.js `20.18.1` or newer installed, you can install Feynman globally via `pnpm`:
+If you already have Node.js `20.19.0` or newer installed, you can install Feynman globally via `pnpm`:
 
 ```bash
 pnpm add -g @companion-ai/feynman
@@ -91,7 +87,7 @@ pnpm dlx @companion-ai/feynman
 
 ## bun
 
-`bun add -g` and `bunx` still use your local Node runtime for Feynman itself, so the same Node.js `20.18.1+` requirement applies.
+`bun add -g` and `bunx` still use your local Node runtime for Feynman itself, so the same Node.js `20.19.0+` requirement applies.
 
 ```bash
 bun add -g @companion-ai/feynman
@@ -133,6 +129,6 @@ For contributing or running Feynman from source:
 git clone https://github.com/getcompanion-ai/feynman.git
 cd feynman
 nvm use || nvm install
-pnpm install
-pnpm start
+npm install
+npm start
 ```

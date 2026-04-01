@@ -35,9 +35,14 @@ export function readPromptSpecs(appRoot) {
 }
 
 export const extensionCommandSpecs = [
+	{ name: "capabilities", args: "", section: "Project & Session", description: "Show installed packages, discovery entrypoints, and runtime capability counts.", publicDocs: true },
+	{ name: "commands", args: "", section: "Project & Session", description: "Browse all available slash commands, including built-in and package commands.", publicDocs: true },
 	{ name: "help", args: "", section: "Project & Session", description: "Show grouped Feynman commands and prefill the editor with a selected command.", publicDocs: true },
+	{ name: "feynman-model", args: "", section: "Project & Session", description: "Open Feynman model menu (main + per-subagent overrides).", publicDocs: true },
 	{ name: "init", args: "", section: "Project & Session", description: "Bootstrap AGENTS.md and session-log folders for a research project.", publicDocs: true },
 	{ name: "outputs", args: "", section: "Project & Session", description: "Browse all research artifacts (papers, outputs, experiments, notes).", publicDocs: true },
+	{ name: "service-tier", args: "", section: "Project & Session", description: "View or set the provider service tier override for supported models.", publicDocs: true },
+	{ name: "tools", args: "", section: "Project & Session", description: "Browse all callable tools with their source and parameter summary.", publicDocs: true },
 ];
 
 export const livePackageCommandGroups = [
@@ -57,6 +62,7 @@ export const livePackageCommandGroups = [
 			{ name: "schedule-prompt", usage: "/schedule-prompt" },
 			{ name: "search", usage: "/search" },
 			{ name: "preview", usage: "/preview" },
+			{ name: "hotkeys", usage: "/hotkeys" },
 			{ name: "new", usage: "/new" },
 			{ name: "quit", usage: "/quit" },
 			{ name: "exit", usage: "/exit" },
@@ -83,6 +89,7 @@ export const cliCommandSections = [
 			{ usage: "feynman model login [id]", description: "Login to a Pi OAuth model provider." },
 			{ usage: "feynman model logout [id]", description: "Logout from a Pi OAuth model provider." },
 			{ usage: "feynman model set <provider/model>", description: "Set the default model." },
+			{ usage: "feynman model tier [value]", description: "View or set the request service tier override." },
 		],
 	},
 	{
@@ -110,6 +117,7 @@ export const legacyFlags = [
 	{ usage: "--alpha-logout", description: "Clear alphaXiv auth and exit." },
 	{ usage: "--alpha-status", description: "Show alphaXiv auth status and exit." },
 	{ usage: "--model <provider:model>", description: "Force a specific model." },
+	{ usage: "--service-tier <tier>", description: "Override request service tier for this run." },
 	{ usage: "--thinking <level>", description: "Set thinking level: off | minimal | low | medium | high | xhigh." },
 	{ usage: "--cwd <path>", description: "Set the working directory for tools." },
 	{ usage: "--session-dir <path>", description: "Set the session storage directory." },

@@ -4,6 +4,8 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FEYNMAN_LOGO_HTML } from "../logo.mjs";
+import { patchPiExtensionLoaderSource } from "./lib/pi-extension-loader-patch.mjs";
+import { PI_SUBAGENTS_PATCH_TARGETS, patchPiSubagentsSource } from "./lib/pi-subagents-patch.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(here, "..");
@@ -51,9 +53,12 @@ const cliPath = piPackageRoot ? resolve(piPackageRoot, "dist", "cli.js") : null;
 const bunCliPath = piPackageRoot ? resolve(piPackageRoot, "dist", "bun", "cli.js") : null;
 const interactiveModePath = piPackageRoot ? resolve(piPackageRoot, "dist", "modes", "interactive", "interactive-mode.js") : null;
 const interactiveThemePath = piPackageRoot ? resolve(piPackageRoot, "dist", "modes", "interactive", "theme", "theme.js") : null;
+const extensionLoaderPath = piPackageRoot ? resolve(piPackageRoot, "dist", "core", "extensions", "loader.js") : null;
 const terminalPath = piTuiRoot ? resolve(piTuiRoot, "dist", "terminal.js") : null;
 const editorPath = piTuiRoot ? resolve(piTuiRoot, "dist", "components", "editor.js") : null;
 const workspaceRoot = resolve(appRoot, ".feynman", "npm", "node_modules");
+const vendorOverrideRoot = resolve(appRoot, ".feynman", "vendor-overrides");
+const piSubagentsRoot = resolve(workspaceRoot, "pi-subagents");
 const webAccessPath = resolve(workspaceRoot, "pi-web-access", "index.ts");
 const sessionSearchIndexerPath = resolve(
 	workspaceRoot,
@@ -139,12 +144,18 @@ function restorePackagedWorkspace(packageSpecs) {
 		timeout: 300000,
 	});
 
+	// On Windows, tar may exit non-zero due to symlink creation failures in
+	// .bin/ directories. These are non-fatal — check whether the actual
+	// package directories were extracted successfully.
+	const packagesPresent = packageSpecs.every((spec) => existsSync(resolve(workspaceRoot, parsePackageName(spec))));
+	if (packagesPresent) return true;
+
 	if (result.status !== 0) {
 		if (result.stderr?.length) process.stderr.write(result.stderr);
 		return false;
 	}
 
-	return packageSpecs.every((spec) => existsSync(resolve(workspaceRoot, parsePackageName(spec))));
+	return false;
 }
 
 function refreshPackagedWorkspace(packageSpecs) {
@@ -156,15 +167,33 @@ function resolveExecutable(name, fallbackPaths = []) {
 		if (existsSync(candidate)) return candidate;
 	}
 
-	const result = spawnSync("sh", ["-lc", `command -v ${name}`], {
-		encoding: "utf8",
-		stdio: ["ignore", "pipe", "ignore"],
-	});
+	const isWindows = process.platform === "win32";
+	const result = isWindows
+		? spawnSync("cmd", ["/c", `where ${name}`], {
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			})
+		: spawnSync("sh", ["-lc", `command -v ${name}`], {
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			});
 	if (result.status === 0) {
-		const resolved = result.stdout.trim();
+		const resolved = result.stdout.trim().split(/\r?\n/)[0];
 		if (resolved) return resolved;
 	}
 	return null;
+}
+
+function syncVendorOverride(relativePath) {
+	const sourcePath = resolve(vendorOverrideRoot, relativePath);
+	const targetPath = resolve(workspaceRoot, relativePath);
+	if (!existsSync(sourcePath) || !existsSync(targetPath)) return;
+
+	const source = readFileSync(sourcePath, "utf8");
+	const current = readFileSync(targetPath, "utf8");
+	if (source !== current) {
+		writeFileSync(targetPath, source, "utf8");
+	}
 }
 
 function ensurePackageWorkspace() {
@@ -230,6 +259,19 @@ function ensurePandoc() {
 }
 
 ensurePandoc();
+
+if (existsSync(piSubagentsRoot)) {
+	for (const relativePath of PI_SUBAGENTS_PATCH_TARGETS) {
+		const entryPath = resolve(piSubagentsRoot, relativePath);
+		if (!existsSync(entryPath)) continue;
+
+		const source = readFileSync(entryPath, "utf8");
+		const patched = patchPiSubagentsSource(relativePath, source);
+		if (patched !== source) {
+			writeFileSync(entryPath, patched, "utf8");
+		}
+	}
+}
 
 if (packageJsonPath && existsSync(packageJsonPath)) {
 	const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8"));
@@ -322,6 +364,14 @@ if (interactiveModePath && existsSync(interactiveModePath)) {
 				.replace("`π - ${cwdBasename}`", "`feynman - ${cwdBasename}`"),
 			"utf8",
 		);
+	}
+}
+
+if (extensionLoaderPath && existsSync(extensionLoaderPath)) {
+	const source = readFileSync(extensionLoaderPath, "utf8");
+	const patched = patchPiExtensionLoaderSource(source);
+	if (patched !== source) {
+		writeFileSync(extensionLoaderPath, patched, "utf8");
 	}
 }
 
@@ -490,6 +540,16 @@ if (editorPath && existsSync(editorPath)) {
 }
 
 if (existsSync(webAccessPath)) {
+	for (const relativePath of [
+		"pi-web-access/index.ts",
+		"pi-web-access/gemini-search.ts",
+		"pi-web-access/curator-page.ts",
+		"pi-web-access/curator-server.ts",
+		"pi-web-access/exa.ts",
+	]) {
+		syncVendorOverride(relativePath);
+	}
+
 	const source = readFileSync(webAccessPath, "utf8");
 	if (source.includes('pi.registerCommand("search",')) {
 		writeFileSync(
@@ -540,6 +600,11 @@ if (alphaHubAuthPath && existsSync(alphaHubAuthPath)) {
 	}
 	if (source.includes(oldError)) {
 		source = source.replace(oldError, newError);
+	}
+	const brokenWinOpen = "else if (plat === 'win32') execSync(`start \"${url}\"`);";
+	const fixedWinOpen = "else if (plat === 'win32') execSync(`cmd /c start \"\" \"${url}\"`);";
+	if (source.includes(brokenWinOpen)) {
+		source = source.replace(brokenWinOpen, fixedWinOpen);
 	}
 	writeFileSync(alphaHubAuthPath, source, "utf8");
 }

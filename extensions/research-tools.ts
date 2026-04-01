@@ -1,9 +1,12 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { registerAlphaTools } from "./research-tools/alpha.js";
+import { registerDiscoveryCommands } from "./research-tools/discovery.js";
+import { registerFeynmanModelCommand } from "./research-tools/feynman-model.js";
 import { installFeynmanHeader } from "./research-tools/header.js";
 import { registerHelpCommand } from "./research-tools/help.js";
 import { registerInitCommand, registerOutputsCommand } from "./research-tools/project.js";
+import { registerServiceTierControls } from "./research-tools/service-tier.js";
 
 export default function researchTools(pi: ExtensionAPI): void {
 	const cache: { agentSummaryPromise?: Promise<{ agents: string[]; chains: string[] }> } = {};
@@ -17,7 +20,10 @@ export default function researchTools(pi: ExtensionAPI): void {
 	});
 
 	registerAlphaTools(pi);
+	registerDiscoveryCommands(pi);
+	registerFeynmanModelCommand(pi);
 	registerHelpCommand(pi);
 	registerInitCommand(pi);
 	registerOutputsCommand(pi);
+	registerServiceTierControls(pi);
 }

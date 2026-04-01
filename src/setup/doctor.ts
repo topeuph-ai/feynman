@@ -1,5 +1,6 @@
-import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { getUserName as getAlphaUserName, isLoggedIn as isAlphaLoggedIn } from "@companion-ai/alpha-hub/lib";
+
+import { readFileSync } from "node:fs";
 
 import { formatPiWebAccessDoctorLines, getPiWebAccessStatus } from "../pi/web-access.js";
 import { BROWSER_FALLBACK_PATHS, PANDOC_FALLBACK_PATHS, resolveExecutable } from "../system/executables.js";
@@ -8,6 +9,31 @@ import { validatePiInstallation } from "../pi/runtime.js";
 import { printInfo, printPanel, printSection } from "../ui/terminal.js";
 import { getCurrentModelSpec } from "../model/commands.js";
 import { buildModelStatusSnapshotFromRecords, getAvailableModelRecords, getSupportedModelRecords } from "../model/catalog.js";
+import { createModelRegistry, getModelsJsonPath } from "../model/registry.js";
+import { getConfiguredServiceTier } from "../model/service-tier.js";
+
+function findProvidersMissingApiKey(modelsJsonPath: string): string[] {
+	try {
+		const raw = readFileSync(modelsJsonPath, "utf8").trim();
+		if (!raw) return [];
+		const parsed = JSON.parse(raw) as any;
+		const providers = parsed?.providers;
+		if (!providers || typeof providers !== "object") return [];
+		const missing: string[] = [];
+		for (const [providerId, config] of Object.entries(providers as Record<string, unknown>)) {
+			if (!config || typeof config !== "object") continue;
+			const models = (config as any).models;
+			if (!Array.isArray(models) || models.length === 0) continue;
+			const apiKey = (config as any).apiKey;
+			if (typeof apiKey !== "string" || apiKey.trim().length === 0) {
+				missing.push(providerId);
+			}
+		}
+		return missing;
+	} catch {
+		return [];
+	}
+}
 
 export type DoctorOptions = {
 	settingsPath: string;
@@ -80,6 +106,7 @@ export function runStatus(options: DoctorOptions): void {
 	printInfo(`Recommended model: ${snapshot.recommendedModel ?? "not available"}`);
 	printInfo(`alphaXiv: ${snapshot.alphaLoggedIn ? snapshot.alphaUser ?? "configured" : "not configured"}`);
 	printInfo(`Web access: pi-web-access (${snapshot.webRouteLabel})`);
+	printInfo(`Service tier: ${getConfiguredServiceTier(options.settingsPath) ?? "not set"}`);
 	printInfo(`Preview: ${snapshot.previewConfigured ? "configured" : "not configured"}`);
 
 	printSection("Paths");
@@ -104,7 +131,7 @@ export function runStatus(options: DoctorOptions): void {
 
 export function runDoctor(options: DoctorOptions): void {
 	const settings = readJson(options.settingsPath);
-	const modelRegistry = new ModelRegistry(AuthStorage.create(options.authPath));
+	const modelRegistry = createModelRegistry(options.authPath);
 	const availableModels = modelRegistry.getAvailable();
 	const pandocPath = resolveExecutable("pandoc", PANDOC_FALLBACK_PATHS);
 	const browserPath = process.env.PUPPETEER_EXECUTABLE_PATH ?? resolveExecutable("google-chrome", BROWSER_FALLBACK_PATHS);
@@ -140,9 +167,25 @@ export function runDoctor(options: DoctorOptions): void {
 	console.log(`default model valid: ${modelStatus.modelValid ? "yes" : "no"}`);
 	console.log(`authenticated providers: ${modelStatus.authenticatedProviderCount}`);
 	console.log(`authenticated models: ${modelStatus.authenticatedModelCount}`);
+	console.log(`service tier: ${getConfiguredServiceTier(options.settingsPath) ?? "not set"}`);
 	console.log(`recommended model: ${modelStatus.recommendedModel ?? "not available"}`);
 	if (modelStatus.recommendedModelReason) {
 		console.log(`  why: ${modelStatus.recommendedModelReason}`);
+	}
+	const modelsError = modelRegistry.getError();
+	if (modelsError) {
+		console.log("models.json: error");
+		for (const line of modelsError.split("\n")) {
+			console.log(`  ${line}`);
+		}
+	} else {
+		const modelsJsonPath = getModelsJsonPath(options.authPath);
+		console.log(`models.json: ${modelsJsonPath}`);
+		const missingApiKeyProviders = findProvidersMissingApiKey(modelsJsonPath);
+		if (missingApiKeyProviders.length > 0) {
+			console.log(`  warning: provider(s) missing apiKey: ${missingApiKeyProviders.join(", ")}`);
+			console.log("  note: custom providers with a models[] list need apiKey in models.json to be available.");
+		}
 	}
 	console.log(`pandoc: ${pandocPath ?? "missing"}`);
 	console.log(`browser preview runtime: ${browserPath ?? "missing"}`);

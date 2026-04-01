@@ -7,6 +7,7 @@ export function printSearchStatus(): void {
 	printInfo(`Search route: ${status.routeLabel}`);
 	printInfo(`Request route: ${status.requestProvider}`);
 	printInfo(`Perplexity API configured: ${status.perplexityConfigured ? "yes" : "no"}`);
+	printInfo(`Exa API configured: ${status.exaConfigured ? "yes" : "no"}`);
 	printInfo(`Gemini API configured: ${status.geminiApiConfigured ? "yes" : "no"}`);
 	printInfo(`Browser profile: ${status.chromeProfile ?? "default Chromium profile"}`);
 	printInfo(`Config path: ${status.configPath}`);

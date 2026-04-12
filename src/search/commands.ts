@@ -18,6 +18,7 @@ export function printSearchStatus(): void {
 	printInfo("Managed by: pi-web-access");
 	printInfo(`Search route: ${status.routeLabel}`);
 	printInfo(`Request route: ${status.requestProvider}`);
+	printInfo(`Search workflow: ${status.workflow}`);
 	printInfo(`Perplexity API configured: ${status.perplexityConfigured ? "yes" : "no"}`);
 	printInfo(`Exa API configured: ${status.exaConfigured ? "yes" : "no"}`);
 	printInfo(`Gemini API configured: ${status.geminiApiConfigured ? "yes" : "no"}`);
@@ -36,6 +37,7 @@ export function setSearchProvider(provider: PiWebSearchProvider, apiKey?: string
 	const updates: Partial<Record<keyof PiWebAccessConfig, unknown>> = {
 		provider,
 		searchProvider: provider,
+		workflow: "none",
 		route: undefined,
 	};
 	const apiKeyField = PROVIDER_API_KEY_FIELDS[provider];
@@ -50,7 +52,7 @@ export function setSearchProvider(provider: PiWebSearchProvider, apiKey?: string
 }
 
 export function clearSearchConfig(): void {
-	savePiWebAccessConfig({ provider: undefined, searchProvider: undefined, route: undefined });
+	savePiWebAccessConfig({ provider: undefined, searchProvider: undefined, route: undefined, workflow: "none" });
 
 	const status = getPiWebAccessStatus();
 	console.log(`Web search provider reset to ${status.routeLabel}.`);

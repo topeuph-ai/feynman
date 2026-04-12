@@ -15,6 +15,42 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Blockers: ...
 - Next: ...
 
+### 2026-04-12 00:00 local — capital-france
+
+- Objective: Run an unattended deep-research workflow for the question "What is the capital of France?"
+- Changed: Created plan artifact at `outputs/.plans/capital-france.md`; scoped the workflow as a narrow fact-verification run with direct lead-agent evidence gathering instead of researcher subagents.
+- Verified: Read existing `CHANGELOG.md` and recalled prior saved plan memory for `capital-france` before finalizing the new run plan.
+- Failed / learned: None yet.
+- Blockers: Need at least two current independent authoritative sources and a quick ambiguity check before drafting.
+- Next: Collect current official/public sources, resolve any legal nuance, then draft and verify the brief.
+
+### 2026-04-12 00:20 local — capital-france
+
+- Objective: Complete evidence gathering and ambiguity check for the capital-of-France workflow.
+- Changed: Wrote `notes/capital-france-research-web.md` and `notes/capital-france-legal-context.md`; identified Insee (2024) and a Sénat report as the two main corroborating sources.
+- Verified: Cross-read current public French sources that explicitly describe Paris as the capital/capital city of France; found no current contradiction.
+- Failed / learned: The Presidency homepage was useful contextual support but not explicit enough to carry the core claim alone.
+- Blockers: Need citation pass and final review pass before promotion.
+- Next: Draft the brief, then run verifier and reviewer passes.
+
+### 2026-04-12 00:35 local — capital-france
+
+- Objective: Move from gathered evidence to a citable draft.
+- Changed: Wrote `outputs/.drafts/capital-france-draft.md` and updated the plan ledger to mark drafting complete.
+- Verified: Kept the core claim narrowly scoped to what the Insee and Sénat sources explicitly support; treated the Élysée page as contextual only.
+- Failed / learned: None.
+- Blockers: Need verifier URL/citation pass and reviewer verification pass before final promotion.
+- Next: Run verifier on the draft, then review and promote the final brief.
+
+### 2026-04-12 10:05 local — capital-france
+
+- Objective: Run the citation-verification pass on the capital-of-France draft and promote a final cited brief.
+- Changed: Verified the three draft source URLs were live (HTTP 200 at check time), added numbered inline citations, downgraded unsupported phrasing around the Élysée/context and broad ambiguity claims, and wrote `outputs/capital-france-brief.md`.
+- Verified: Confirmed Insee explicitly says Paris is the capital of France; confirmed the Sénat report describes Paris’s capital status and the presence of national institutions; confirmed the Élysée homepage is contextual only and not explicit enough to carry the core claim.
+- Failed / learned: The draft wording about the Presidency being seated in Paris was not directly supported by the cited homepage, so it was removed rather than carried forward.
+- Blockers: Reviewer pass still pending if the workflow requires an adversarial final check.
+- Next: If needed, run a final reviewer pass; otherwise use `outputs/capital-france-brief.md` as the canonical brief.
+
 ### 2026-03-25 00:00 local — scaling-laws
 
 - Objective: Set up a deep research workflow for scaling laws.
@@ -186,3 +222,21 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Failed / learned: The website build still emits duplicate-id warnings for a handful of docs pages, but it completes successfully; those warnings predate this pass and were not introduced by the model-command edits.
 - Blockers: The Bedrock path is verified with the current shell's AWS credential chain, not with a fresh machine lacking AWS config; broader upstream Pi behavior around IMDS/default-profile autodiscovery without the sentinel is still outside this repo.
 - Next: Commit and push the combined Pi/model/docs maintenance branch, then decide whether to tackle the deeper search/deepresearch hang issues separately or leave them for focused repro work.
+
+### 2026-04-12 13:35 PDT — workflow-unattended-and-search-curator-fix-pass
+
+- Objective: Fix the remaining workflow deadlocks instead of leaving `deepresearch` and terminal web search half-functional after the maintenance push.
+- Changed: Updated the built-in research workflow prompts (`deepresearch`, `lit`, `review`, `audit`, `compare`, `draft`, `watch`) so they present the plan and continue automatically rather than blocking for approval; extended the `pi-web-access` runtime patch so Feynman rewrites its default workflow from browser-based `summary-review` to `none`; added explicit `workflow: "none"` persistence in `src/search/commands.ts` and `src/pi/web-access.ts`, plus surfaced the workflow in doctor/status-style output.
+- Verified: Reproduced the original `deepresearch` failure mode in print mode, where the run created `outputs/.plans/capital-france.md` and then stopped waiting for user confirmation; after the prompt changes, reran `deepresearch "What is the capital of France?"` and confirmed it progressed beyond planning and produced `outputs/.drafts/capital-france-draft.md`; inspected `pi-web-access@0.10.6` and confirmed the exact `waiting for summary approval...` string and `summary-review` default live in that package; added regression tests for the new `pi-web-access` patch and workflow-none status handling; reran `npm test`, `npm run typecheck`, and `npm run build`; smoke-tested `feynman search set exa exa_test_key` under a throwaway `FEYNMAN_HOME` and confirmed it writes `"workflow": "none"` to `web-search.json`.
+- Failed / learned: The long-running deepresearch session still spends substantial time in later reasoning/writing steps for even a narrow query, but the plan-confirmation deadlock itself is resolved; the remaining slowness is model/workflow behavior, not the original stop-after-plan bug.
+- Blockers: I did not install and execute the full optional `pi-session-search` package locally, so the terminal `summary approval` fix is validated by source inspection plus the Feynman patch path and config persistence rather than a local end-to-end package install.
+- Next: Commit and push the workflow/search fix pass, then close or answer the remaining deepresearch/search issues with the specific root causes and shipped fixes.
+
+### 2026-04-12 13:20 PDT — capital-france (citation verification brief)
+
+- Objective: Verify citations in the capital-of-France draft and produce a cited verifier brief.
+- Changed: Read `outputs/.drafts/capital-france-draft.md`, `notes/capital-france-research-web.md`, and `notes/capital-france-legal-context.md`; fetched the three draft URLs directly; wrote `notes/capital-france-brief.md` with inline numbered citations and a numbered direct-URL sources list.
+- Verified: Confirmed the Insee, Sénat, and Élysée URLs were reachable on 2026-04-12; confirmed Insee and Sénat support the core claim that Paris is the capital of France; marked the Élysée homepage as contextual-only support.
+- Failed / learned: The Élysée homepage does not explicitly state the core claim, so it should not be used as sole evidence for capital status.
+- Blockers: None for the verifier brief; any stronger legal memo would still need a more direct constitutional/statutory basis if that specific question is asked.
+- Next: Promote the brief into the final output or downgrade/remove any claim that leans on the Élysée URL alone.

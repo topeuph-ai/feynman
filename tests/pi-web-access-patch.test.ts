@@ -33,6 +33,27 @@ test("patchPiWebAccessSource updates index.ts directory handling", () => {
 	assert.match(patched, /const dir = dirname\(WEB_SEARCH_CONFIG_PATH\);/);
 });
 
+test("patchPiWebAccessSource defaults workflow to none for index.ts", () => {
+	const input = [
+		'function resolveWorkflow(input: unknown, hasUI: boolean): WebSearchWorkflow {',
+		'\tif (!hasUI) return "none";',
+		'\tif (typeof input === "string" && input.trim().toLowerCase() === "none") return "none";',
+		'\treturn "summary-review";',
+		'}',
+		'workflow: Type.Optional(',
+		'\tStringEnum(["none", "summary-review"], {',
+		'\t\tdescription: "Search workflow mode: none = no curator, summary-review = open curator with auto summary draft (default)",',
+		'\t}),',
+		'),',
+		"",
+	].join("\n");
+
+	const patched = patchPiWebAccessSource("index.ts", input);
+
+	assert.match(patched, /return "none";/);
+	assert.doesNotMatch(patched, /summary-review = open curator with auto summary draft \(default\)/);
+});
+
 test("patchPiWebAccessSource is idempotent", () => {
 	const input = [
 		'import { join } from "node:path";',

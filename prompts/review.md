@@ -9,7 +9,7 @@ Review this AI research artifact: $@
 Derive a short slug from the artifact name (lowercase, hyphens, no filler words, ≤5 words). Use this slug for all files in this run.
 
 Requirements:
-- Before starting, outline what will be reviewed, the review criteria (novelty, empirical rigor, baselines, reproducibility, etc.), and any verification-specific checks needed for claims, figures, and reported metrics. Present the plan to the user and confirm before proceeding.
+- Before starting, outline what will be reviewed, the review criteria (novelty, empirical rigor, baselines, reproducibility, etc.), and any verification-specific checks needed for claims, figures, and reported metrics. Present the plan to the user, then continue automatically. Do not block the workflow waiting for confirmation.
 - Spawn a `researcher` subagent to gather evidence on the artifact — inspect the paper, code, cited work, and any linked experimental artifacts. Save to `<slug>-research.md`.
 - Spawn a `reviewer` subagent with `<slug>-research.md` to produce the final peer review with inline annotations.
 - For small or simple artifacts where evidence gathering is overkill, run the `reviewer` subagent directly instead.

@@ -3,11 +3,13 @@ import { dirname, resolve } from "node:path";
 import { getFeynmanHome } from "../config/paths.js";
 
 export type PiWebSearchProvider = "auto" | "perplexity" | "exa" | "gemini";
+export type PiWebSearchWorkflow = "none" | "summary-review";
 
 export type PiWebAccessConfig = Record<string, unknown> & {
 	route?: PiWebSearchProvider;
 	provider?: PiWebSearchProvider;
 	searchProvider?: PiWebSearchProvider;
+	workflow?: PiWebSearchWorkflow;
 	perplexityApiKey?: string;
 	exaApiKey?: string;
 	geminiApiKey?: string;
@@ -18,6 +20,7 @@ export type PiWebAccessStatus = {
 	configPath: string;
 	searchProvider: PiWebSearchProvider;
 	requestProvider: PiWebSearchProvider;
+	workflow: PiWebSearchWorkflow;
 	perplexityConfigured: boolean;
 	exaConfigured: boolean;
 	geminiApiConfigured: boolean;
@@ -33,6 +36,10 @@ export function getPiWebSearchConfigPath(home?: string): string {
 
 function normalizeProvider(value: unknown): PiWebSearchProvider | undefined {
 	return value === "auto" || value === "perplexity" || value === "exa" || value === "gemini" ? value : undefined;
+}
+
+function normalizeWorkflow(value: unknown): PiWebSearchWorkflow | undefined {
+	return value === "none" || value === "summary-review" ? value : undefined;
 }
 
 function normalizeNonEmptyString(value: unknown): string | undefined {
@@ -102,6 +109,7 @@ export function getPiWebAccessStatus(
 	const searchProvider =
 		normalizeProvider(config.searchProvider) ?? normalizeProvider(config.route) ?? normalizeProvider(config.provider) ?? "auto";
 	const requestProvider = normalizeProvider(config.provider) ?? normalizeProvider(config.route) ?? searchProvider;
+	const workflow = normalizeWorkflow(config.workflow) ?? "none";
 	const perplexityConfigured = Boolean(normalizeNonEmptyString(config.perplexityApiKey));
 	const exaConfigured = Boolean(normalizeNonEmptyString(config.exaApiKey));
 	const geminiApiConfigured = Boolean(normalizeNonEmptyString(config.geminiApiKey));
@@ -112,6 +120,7 @@ export function getPiWebAccessStatus(
 		configPath,
 		searchProvider,
 		requestProvider,
+		workflow,
 		perplexityConfigured,
 		exaConfigured,
 		geminiApiConfigured,
@@ -128,6 +137,7 @@ export function formatPiWebAccessDoctorLines(
 		"web access: pi-web-access",
 		`  search route: ${status.routeLabel}`,
 		`  request route: ${status.requestProvider}`,
+		`  search workflow: ${status.workflow}`,
 		`  perplexity api: ${status.perplexityConfigured ? "configured" : "not configured"}`,
 		`  exa api: ${status.exaConfigured ? "configured" : "not configured"}`,
 		`  gemini api: ${status.geminiApiConfigured ? "configured" : "not configured"}`,

@@ -62,6 +62,7 @@ test("getPiWebAccessStatus reads Pi web-access config directly", () => {
 	const status = getPiWebAccessStatus(loadPiWebAccessConfig(configPath), configPath);
 	assert.equal(status.routeLabel, "Exa");
 	assert.equal(status.requestProvider, "exa");
+	assert.equal(status.workflow, "none");
 	assert.equal(status.exaConfigured, true);
 	assert.equal(status.geminiApiConfigured, true);
 	assert.equal(status.perplexityConfigured, false);
@@ -86,6 +87,7 @@ test("getPiWebAccessStatus reads Gemini routes directly", () => {
 	const status = getPiWebAccessStatus(loadPiWebAccessConfig(configPath), configPath);
 	assert.equal(status.routeLabel, "Gemini");
 	assert.equal(status.requestProvider, "gemini");
+	assert.equal(status.workflow, "none");
 	assert.equal(status.exaConfigured, false);
 	assert.equal(status.geminiApiConfigured, true);
 	assert.equal(status.perplexityConfigured, false);
@@ -100,6 +102,7 @@ test("getPiWebAccessStatus supports the legacy route key", () => {
 
 	assert.equal(status.routeLabel, "Perplexity");
 	assert.equal(status.requestProvider, "perplexity");
+	assert.equal(status.workflow, "none");
 	assert.equal(status.perplexityConfigured, true);
 });
 
@@ -112,5 +115,6 @@ test("formatPiWebAccessDoctorLines reports Pi-managed web access", () => {
 	);
 
 	assert.equal(lines[0], "web access: pi-web-access");
+	assert.ok(lines.some((line) => line.includes("search workflow: none")));
 	assert.ok(lines.some((line) => line.includes("/tmp/pi-web-search.json")));
 });

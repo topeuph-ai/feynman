@@ -42,6 +42,15 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Blockers: Need verifier URL/citation pass and reviewer verification pass before final promotion.
 - Next: Run verifier on the draft, then review and promote the final brief.
 
+### 2026-04-12 00:50 local — capital-france
+
+- Objective: Complete citation, verification, and final promotion for the capital-of-France workflow.
+- Changed: Produced `outputs/capital-france-brief.md`, ran verification into `notes/capital-france-verification.md`, promoted the final brief to `outputs/capital-france.md`, and wrote `outputs/capital-france.provenance.md`.
+- Verified: Reviewer found no FATAL or MAJOR issues. Core claim remains backed by two independent French public-institution sources, with Insee as the primary explicit source and the Sénat report as corroboration.
+- Failed / learned: The runtime did not expose a named `verifier` subagent, so I used an available worker in a verifier-equivalent role and recorded that deviation in the plan.
+- Blockers: None.
+- Next: If needed, extend the brief with deeper legal-historical sourcing, but the narrow factual question is sufficiently answered.
+
 ### 2026-04-12 10:05 local — capital-france
 
 - Objective: Run the citation-verification pass on the capital-of-France draft and promote a final cited brief.
@@ -50,6 +59,15 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Failed / learned: The draft wording about the Presidency being seated in Paris was not directly supported by the cited homepage, so it was removed rather than carried forward.
 - Blockers: Reviewer pass still pending if the workflow requires an adversarial final check.
 - Next: If needed, run a final reviewer pass; otherwise use `outputs/capital-france-brief.md` as the canonical brief.
+
+### 2026-04-12 10:20 local — capital-france
+
+- Objective: Close the workflow with final review, final artifact promotion, and provenance.
+- Changed: Ran a reviewer pass recorded in `notes/capital-france-verification.md`; promoted the cited brief into `outputs/capital-france.md`; wrote `outputs/capital-france.provenance.md`; updated the run plan to mark all tasks complete.
+- Verified: Reviewer verdict was PASS WITH MINOR REVISIONS only; those minor wording fixes were applied before delivery.
+- Failed / learned: The runtime did not expose a project-named `verifier` agent, so the citation pass used an available worker agent as a verifier-equivalent step.
+- Blockers: None.
+- Next: Optional only — produce a legal memorandum on the basis of Paris's capital status if requested.
 
 ### 2026-03-25 00:00 local — scaling-laws
 
@@ -231,6 +249,15 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Failed / learned: The long-running deepresearch session still spends substantial time in later reasoning/writing steps for even a narrow query, but the plan-confirmation deadlock itself is resolved; the remaining slowness is model/workflow behavior, not the original stop-after-plan bug.
 - Blockers: I did not install and execute the full optional `pi-session-search` package locally, so the terminal `summary approval` fix is validated by source inspection plus the Feynman patch path and config persistence rather than a local end-to-end package install.
 - Next: Commit and push the workflow/search fix pass, then close or answer the remaining deepresearch/search issues with the specific root causes and shipped fixes.
+
+### 2026-04-12 14:05 PDT — final-artifact-hardening-pass
+
+- Objective: Reduce the chance of unattended research workflows stopping at intermediate artifacts like `<slug>-brief.md` without promoting the final deliverable and provenance sidecar.
+- Changed: Tightened `prompts/deepresearch.md` so the agent must verify on disk that the plan, draft, cited brief, promoted final output, and provenance sidecar all exist before stopping; tightened `prompts/lit.md` so it explicitly checks for the final output plus provenance sidecar instead of stopping at an intermediate cited draft.
+- Verified: Cross-read the current deepresearch/lit deliver steps after the earlier unattended-run reproductions and confirmed the missing enforcement point was the final on-disk artifact check, not the naming convention itself.
+- Failed / learned: This is still prompt-level enforcement rather than a deterministic post-processing hook, so it improves completion reliability but does not provide the same guarantees as a dedicated artifact-finalization wrapper.
+- Blockers: I did not rerun a full broad deepresearch workflow end-to-end after this prompt-only hardening because those runs are materially longer and more expensive than the narrow reproductions already used to isolate the earlier deadlocks.
+- Next: Commit and push the prompt hardening, then, if needed, add a deterministic wrapper around final artifact promotion instead of relying only on prompt adherence.
 
 ### 2026-04-12 13:20 PDT — capital-france (citation verification brief)
 

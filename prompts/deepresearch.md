@@ -182,6 +182,15 @@ Write a provenance record alongside it as `<slug>.provenance.md`:
 - **Research files:** [list of intermediate <slug>-research-*.md files]
 ```
 
+Before you stop, verify on disk that all of these exist:
+- `outputs/.plans/<slug>.md`
+- `outputs/.drafts/<slug>-draft.md`
+- `<slug>-brief.md` intermediate cited brief
+- `outputs/<slug>.md` or `papers/<slug>.md` final promoted deliverable
+- `outputs/<slug>.provenance.md` or `papers/<slug>.provenance.md` provenance sidecar
+
+Do not stop at `<slug>-brief.md` alone. If the cited brief exists but the promoted final output or provenance sidecar does not, create them before responding.
+
 ## Background execution
 
 If the user wants unattended execution or the sweep will clearly take a while:

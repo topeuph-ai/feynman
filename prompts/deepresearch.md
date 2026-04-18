@@ -4,221 +4,175 @@ args: <topic>
 section: Research Workflows
 topLevelCli: true
 ---
-Run a deep research workflow for: $@
+Run deep research for: $@
 
-This is an execution request, not a request to explain or implement the workflow instructions. Carry out the workflow with tools and durable files. Do not answer by describing the protocol, converting it into programming steps, or saying how someone could implement it.
+This is an execution request, not a request to explain or implement the workflow instructions.
+Execute the workflow. Do not answer by describing the protocol, do not explain these instructions, do not restate the protocol, and do not ask for confirmation. Do not stop after planning. Your first actions should be tool calls that create directories and write the plan artifact.
 
-You are the Lead Researcher. You plan, delegate, evaluate, verify, write, and cite. Internal orchestration is invisible to the user unless they ask.
+## Required Artifacts
 
-## 1. Plan
+Derive a short slug from the topic: lowercase, hyphenated, no filler words, at most 5 words.
 
-Analyze the research question using extended thinking. Develop a research strategy:
-- Key questions that must be answered
-- Evidence types needed (papers, web, code, data, docs)
-- Sub-questions disjoint enough to parallelize
-- Source types and time periods that matter
-- Acceptance criteria: what evidence would make the answer "sufficient"
+Every run must leave these files on disk:
+- `outputs/.plans/<slug>.md`
+- `outputs/.drafts/<slug>-draft.md`
+- `outputs/.drafts/<slug>-cited.md`
+- `outputs/<slug>.md` or `papers/<slug>.md`
+- `outputs/<slug>.provenance.md` or `papers/<slug>.provenance.md`
+
+If any capability fails, continue in degraded mode and still write a blocked or partial final output and provenance sidecar. Never end with chat-only output. Never end with only an explanation in chat. Use `Verification: BLOCKED` when verification could not be completed.
+
+## Step 1: Plan
+
+Create `outputs/.plans/<slug>.md` immediately. The plan must include:
+- Key questions
+- Evidence needed
+- Scale decision
+- Task ledger
+- Verification log
+- Decision log
 
 Make the scale decision before assigning owners in the plan. If the topic is a narrow "what is X" explainer, the plan must use lead-owned direct search tasks only; do not allocate researcher subagents in the task ledger.
 
-Derive a short slug from the topic (lowercase, hyphens, no filler words, ≤5 words — e.g. "cloud-sandbox-pricing" not "deepresearch-plan"). Write the plan to `outputs/.plans/<slug>.md` as a self-contained artifact. Use this same slug for all artifacts in this run.
-If `CHANGELOG.md` exists, read the most recent relevant entries before finalizing the plan. Once the workflow becomes multi-round or spans enough work to merit resume support, append concise entries to `CHANGELOG.md` after meaningful progress and before stopping.
+Also save the plan with `memory_remember` using key `deepresearch.<slug>.plan` if that tool is available. If it is not available, continue without it.
 
-```markdown
-# Research Plan: [topic]
+After writing the plan, continue immediately. Do not pause for approval.
 
-## Questions
-1. ...
+## Step 2: Scale
 
-## Strategy
-- Researcher allocations and dimensions
-- Expected rounds
+Use direct search for:
+- Single fact or narrow question, including "what is X" explainers
+- Work you can answer with 3-10 tool calls
 
-## Acceptance Criteria
-- [ ] All key questions answered with ≥2 independent sources
-- [ ] Contradictions identified and addressed
-- [ ] No single-source claims on critical findings
-
-## Task Ledger
-| ID | Owner | Task | Status | Output |
-|---|---|---|---|---|
-| T1 | lead / researcher | ... | todo | ... |
-
-## Verification Log
-| Item | Method | Status | Evidence |
-|---|---|---|---|
-| Critical claim / computation / figure | source cross-read / rerun / direct fetch / code check | pending | path or URL |
-
-## Decision Log
-(Updated as the workflow progresses)
-```
-
-Also save the plan with `memory_remember` (type: `fact`, key: `deepresearch.<slug>.plan`) so it survives context truncation.
-
-Briefly summarize the plan to the user and continue immediately. Do not ask for confirmation or wait for a proceed response unless the user explicitly requested plan review.
-
-Do not stop after planning. If live search, subagents, web access, alphaXiv, or any other capability is unavailable, continue in degraded mode and write a durable blocked/partial report that records exactly which capabilities failed.
-
-## 2. Scale decision
-
-| Query type | Execution |
-|---|---|
-| Single fact or narrow question, including "what is X" explainers | Search directly yourself, no subagents, 3-10 tool calls |
-| Direct comparison (2-3 items) | 2 parallel `researcher` subagents |
-| Broad survey or multi-faceted topic | 3-4 parallel `researcher` subagents |
-| Complex multi-domain research | 4-6 parallel `researcher` subagents |
-
-Never spawn subagents for work you can do in 5 tool calls.
 For "what is X" explainer topics, you MUST NOT spawn researcher subagents unless the user explicitly asks for comprehensive coverage, current landscape, benchmarks, or production deployment.
 Do not inflate a simple explainer into a multi-agent survey.
 
-## 3. Spawn researchers
+Use subagents only when decomposition clearly helps:
+- Direct comparison of 2-3 items: 2 `researcher` subagents
+- Broad survey or multi-faceted topic: 3-4 `researcher` subagents
+- Complex multi-domain research: 4-6 `researcher` subagents
 
-Skip this section entirely when the scale decision chose direct search/no subagents. In that case, gather evidence yourself with search/fetch/paper tools, write notes directly to `<slug>-research-direct.md`, and continue to Section 4.
+## Step 3: Gather Evidence
 
-Launch parallel `researcher` subagents via `subagent`. Each gets a structured brief with:
-- **Objective:** what to find
-- **Output format:** numbered sources, evidence table, inline source references
-- **Tool guidance:** which search tools to prioritize
-- **Task boundaries:** what NOT to cover (another researcher handles that)
-- **Task IDs:** the specific ledger rows they own and must report back on
+Avoid crash-prone PDF parsing in this workflow. Do not call `alpha_get_paper` and do not fetch `.pdf` URLs unless the user explicitly asks for PDF extraction. Prefer paper metadata, abstracts, HTML pages, official docs, and web snippets. If only a PDF exists, cite the PDF URL from search metadata and mark full-text PDF parsing as blocked instead of fetching it.
 
-Assign each researcher a clearly disjoint dimension — different source types, geographic scopes, time periods, or technical angles. Never duplicate coverage.
-Keep `subagent` tool-call JSON small and valid. For detailed task instructions, write a per-researcher brief first, e.g. `outputs/.plans/<slug>-T1.md`, then pass a short task string that points to that brief and the required output file. Do not place multi-paragraph instructions inside the `subagent` JSON.
-Use only supported `subagent` keys. Do not add extra keys such as `artifacts` unless the tool schema explicitly exposes them.
-When using parallel researchers, always set `failFast: false` so one blocked researcher does not abort the whole workflow.
-Do not name exact tool commands in subagent tasks unless those tool names are visible in the current tool set. Prefer broad guidance such as "use paper search and web search"; if a PDF parser or paper fetch fails, the researcher must continue from metadata, abstracts, and web sources and mark PDF parsing as blocked.
+If direct search was chosen:
+- Skip researcher spawning entirely.
+- Search and fetch sources yourself.
+- Write notes to `<slug>-research-direct.md`.
+- Continue to synthesis.
 
-```
+If subagents were chosen:
+- Write a per-researcher brief first, such as `outputs/.plans/<slug>-T1.md`.
+- Keep `subagent` tool-call JSON small and valid.
+- Do not place multi-paragraph instructions inside the `subagent` JSON.
+- Use only supported `subagent` keys. Do not add extra keys such as `artifacts` unless the tool schema explicitly exposes them.
+- Always set `failFast: false`.
+- Do not name exact tool commands in subagent tasks unless those tool names are visible in the current tool set.
+- Prefer broad guidance such as "use paper search and web search"; if a PDF parser or paper fetch fails, the researcher must continue from metadata, abstracts, and web sources and mark PDF parsing as blocked.
+
+Example shape:
+
+```json
 {
-  tasks: [
-    { agent: "researcher", task: "Read outputs/.plans/<slug>-T1.md and write <slug>-research-web.md.", output: "<slug>-research-web.md" },
-    { agent: "researcher", task: "Read outputs/.plans/<slug>-T2.md and write <slug>-research-papers.md.", output: "<slug>-research-papers.md" }
+  "tasks": [
+    { "agent": "researcher", "task": "Read outputs/.plans/<slug>-T1.md and write <slug>-research-web.md.", "output": "<slug>-research-web.md" },
+    { "agent": "researcher", "task": "Read outputs/.plans/<slug>-T2.md and write <slug>-research-papers.md.", "output": "<slug>-research-papers.md" }
   ],
-  concurrency: 4,
-  failFast: false
+  "concurrency": 4,
+  "failFast": false
 }
 ```
 
-Researchers write full outputs to files and pass references back — do not have them return full content into your context.
-Researchers must not silently merge or skip assigned tasks. If something is impossible or redundant, mark the ledger row `blocked` or `superseded` with a note.
+After evidence gathering, update the plan ledger and verification log. If research failed, record exactly what failed and proceed with a blocked or partial draft.
 
-## 4. Evaluate and loop
+## Step 4: Draft
 
-After researchers return, read their output files and critically assess:
-- Which plan questions remain unanswered?
-- Which answers rest on only one source?
-- Are there contradictions needing resolution?
-- Is any key angle missing entirely?
-- Did every assigned ledger task actually get completed, blocked, or explicitly superseded?
+Write the report yourself. Do not delegate synthesis.
 
-If gaps are significant, spawn another targeted batch of researchers. No fixed cap on rounds — iterate until evidence is sufficient or sources are exhausted.
+Save to `outputs/.drafts/<slug>-draft.md`.
 
-Update the plan artifact (`outputs/.plans/<slug>.md`) task ledger, verification log, and decision log after each round.
-When the work spans multiple rounds, also append a concise chronological entry to `CHANGELOG.md` covering what changed, what was verified, what remains blocked, and the next recommended step.
+Include:
+- Executive summary
+- Findings organized by question/theme
+- Evidence-backed caveats and disagreements
+- Open questions
+- No invented sources, results, figures, benchmarks, images, charts, or tables
 
-Most topics need 1-2 rounds. Stop when additional rounds would not materially change conclusions.
+Before citation, sweep the draft:
+- Every critical claim, number, figure, table, or benchmark must map to a source URL, research note, raw artifact path, or command/script output.
+- Remove or downgrade unsupported claims.
+- Mark inferences as inferences.
 
-If no researcher files can be produced because tools, subagents, or network access failed, create `outputs/.drafts/<slug>-draft.md` yourself as a blocked report with:
-- what was requested,
-- which capabilities failed,
-- what evidence was and was not gathered,
-- a proposed source-gathering plan,
-- no invented sources or results.
+## Step 5: Cite
 
-## 5. Write the report
+If direct search/no researcher subagents was chosen:
+- Do citation yourself.
+- Verify reachable HTML/doc URLs with available fetch/search tools.
+- Copy or rewrite `outputs/.drafts/<slug>-draft.md` to `outputs/.drafts/<slug>-cited.md` with inline citations and a Sources section.
+- Do not spawn the `verifier` subagent for simple direct-search runs.
 
-Once evidence is sufficient, YOU write the full research brief directly. Do not delegate writing to another agent. Read the research files, synthesize the findings, and produce a complete document:
+If researcher subagents were used, run the `verifier` agent after the draft exists. This step is mandatory and must complete before any reviewer runs. Do not run the `verifier` and `reviewer` in the same parallel `subagent` call.
 
-```markdown
-# Title
+Use this shape:
 
-## Executive Summary
-2-3 paragraph overview of key findings.
-
-## Section 1: ...
-Detailed findings organized by theme or question.
-
-## Section N: ...
-
-## Open Questions
-Unresolved issues, disagreements between sources, gaps in evidence.
+```json
+{
+  "agent": "verifier",
+  "task": "Add inline citations to outputs/.drafts/<slug>-draft.md using the research files as source material. Verify every URL. Write the complete cited brief to outputs/.drafts/<slug>-cited.md.",
+  "output": "outputs/.drafts/<slug>-cited.md"
+}
 ```
 
-When the research includes quantitative data (benchmarks, performance comparisons, trends), generate charts using `pi-charts`. Use Mermaid diagrams for architectures and processes. Every visual must have a caption and reference the underlying data.
+After the verifier returns, verify on disk that `outputs/.drafts/<slug>-cited.md` exists. If the verifier wrote elsewhere, find the cited file and move or copy it to `outputs/.drafts/<slug>-cited.md`.
 
-Before finalizing the draft, do a claim sweep:
-- map each critical claim, number, and figure to its supporting source or artifact in the verification log
-- downgrade or remove anything that cannot be grounded
-- label inferences as inferences
-- if code or calculations were involved, record which checks were actually run and which remain unverified
+## Step 6: Review
 
-Save this draft to `outputs/.drafts/<slug>-draft.md`.
+If direct search/no researcher subagents was chosen:
+- Review the cited draft yourself.
+- Write `<slug>-verification.md` with FATAL / MAJOR / MINOR findings and the checks performed.
+- Fix FATAL issues before delivery.
+- Do not spawn the `reviewer` subagent for simple direct-search runs.
 
-## 6. Cite
+If researcher subagents were used, only after `outputs/.drafts/<slug>-cited.md` exists, run the `reviewer` agent against it.
 
-Spawn the `verifier` agent to post-process YOUR draft. The verifier agent adds inline citations, verifies every source URL, and produces the final output:
+Use this shape:
 
-```
-{ agent: "verifier", task: "Add inline citations to outputs/.drafts/<slug>-draft.md using the research files as source material. Verify every URL. Write the complete cited brief to outputs/.drafts/<slug>-cited.md.", output: "outputs/.drafts/<slug>-cited.md" }
-```
-
-The verifier agent does not rewrite the report — it only anchors claims to sources and builds the numbered Sources section.
-This step is mandatory and must complete before any reviewer runs. Do not run the `verifier` and `reviewer` in the same parallel `subagent` call.
-After the verifier returns, verify on disk that `outputs/.drafts/<slug>-cited.md` exists. If the verifier wrote to a different path, find the cited file, move or copy it to `outputs/.drafts/<slug>-cited.md`, and use that path from this point forward.
-
-## 7. Verify
-
-Only after `outputs/.drafts/<slug>-cited.md` exists, spawn the `reviewer` agent against that cited draft. The reviewer checks for:
-- Unsupported claims that slipped past citation
-- Logical gaps or contradictions between sections
-- Single-source claims on critical findings
-- Overstated confidence relative to evidence quality
-
-```
-{ agent: "reviewer", task: "Verify outputs/.drafts/<slug>-cited.md — flag any claims that lack sufficient source backing, identify logical gaps, and check that confidence levels match evidence strength. This is a verification pass, not a peer review.", output: "<slug>-verification.md" }
+```json
+{
+  "agent": "reviewer",
+  "task": "Verify outputs/.drafts/<slug>-cited.md. Flag unsupported claims, logical gaps, single-source critical claims, and overstated confidence. This is a verification pass, not a peer review.",
+  "output": "<slug>-verification.md"
+}
 ```
 
-If the reviewer flags FATAL issues, fix them in the brief before delivering. MAJOR issues get noted in the Open Questions section. MINOR issues are accepted.
-After fixes, run at least one more review-style verification pass if any FATAL issues were found. Do not assume one fix solved everything.
-When applying reviewer fixes, do not issue one giant `edit` tool call with many replacements. Use small localized edits only when there are 1-3 simple corrections. For section rewrites, table rewrites, or more than 3 substantive fixes, read the cited draft and write a corrected full file to `outputs/.drafts/<slug>-revised.md` instead. Then run the follow-up review against `outputs/.drafts/<slug>-revised.md`.
+If the reviewer flags FATAL issues, fix them before delivery and run one more review pass. Note MAJOR issues in Open Questions. Accept MINOR issues.
+
+When applying reviewer fixes, do not issue one giant `edit` tool call with many replacements. Use small localized edits only for 1-3 simple corrections. For section rewrites, table rewrites, or more than 3 substantive fixes, read the cited draft and write a corrected full file to `outputs/.drafts/<slug>-revised.md` instead.
+
 The final candidate is `outputs/.drafts/<slug>-revised.md` if it exists; otherwise it is `outputs/.drafts/<slug>-cited.md`.
 
-## 8. Deliver
+## Step 7: Deliver
 
-Copy the final cited and verified output to the appropriate folder:
-- Paper-style drafts → `papers/`
-- Everything else → `outputs/`
+Copy the final candidate to:
+- `papers/<slug>.md` for paper-style drafts
+- `outputs/<slug>.md` for everything else
 
-Save the final output as `<slug>.md` (in `outputs/` or `papers/` per the rule above).
-
-Write a provenance record alongside it as `<slug>.provenance.md`:
+Write provenance next to it as `<slug>.provenance.md`:
 
 ```markdown
 # Provenance: [topic]
 
 - **Date:** [date]
-- **Rounds:** [number of researcher rounds]
-- **Sources consulted:** [total unique sources across all research files]
-- **Sources accepted:** [sources that survived citation verification]
-- **Sources rejected:** [dead links, unverifiable, or removed]
-- **Verification:** [PASS / PASS WITH NOTES — summary of reviewer findings]
+- **Rounds:** [number of research rounds]
+- **Sources consulted:** [count and/or list]
+- **Sources accepted:** [count and/or list]
+- **Sources rejected:** [dead, unverifiable, or removed]
+- **Verification:** [PASS / PASS WITH NOTES / BLOCKED]
 - **Plan:** outputs/.plans/<slug>.md
-- **Research files:** [list of intermediate <slug>-research-*.md files]
+- **Research files:** [files used]
 ```
 
-Before you stop, verify on disk that all of these exist:
-- `outputs/.plans/<slug>.md`
-- `outputs/.drafts/<slug>-draft.md`
-- `outputs/.drafts/<slug>-cited.md` intermediate cited brief
-- `outputs/<slug>.md` or `papers/<slug>.md` final promoted deliverable
-- `outputs/<slug>.provenance.md` or `papers/<slug>.provenance.md` provenance sidecar
+Before responding, verify on disk that all required artifacts exist. If verification could not be completed, set `Verification: BLOCKED` or `PASS WITH NOTES` and list the missing checks.
 
-Do not stop at the cited or revised draft alone. If the cited/revised brief exists but the promoted final output or provenance sidecar does not, create them before responding.
-If full verification could not be completed, still create the final deliverable and provenance sidecar with `Verification: BLOCKED` or `PASS WITH NOTES` and list the missing checks. Never end with only an explanation in chat.
-
-## Background execution
-
-If the user wants unattended execution or the sweep will clearly take a while:
-- Launch the full workflow via `subagent` using `clarify: false, async: true`
-- Report the async ID and how to check status with `subagent_status`
+Final response should be brief: link the final file, provenance file, and any blocked checks.

@@ -1,11 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { delimiter, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FEYNMAN_LOGO_HTML } from "../logo.mjs";
 import { patchAlphaHubAuthSource } from "./lib/alpha-hub-auth-patch.mjs";
+import { patchPiAgentCoreSource } from "./lib/pi-agent-core-patch.mjs";
 import { patchPiExtensionLoaderSource } from "./lib/pi-extension-loader-patch.mjs";
 import { patchPiGoogleLegacySchemaSource } from "./lib/pi-google-legacy-schema-patch.mjs";
 import { PI_WEB_ACCESS_PATCH_TARGETS, patchPiWebAccessSource } from "./lib/pi-web-access-patch.mjs";
@@ -50,6 +51,7 @@ function findPackageRoot(packageName) {
 }
 
 const piPackageRoot = findPackageRoot("@mariozechner/pi-coding-agent");
+const piAgentCoreRoot = findPackageRoot("@mariozechner/pi-agent-core");
 const piTuiRoot = findPackageRoot("@mariozechner/pi-tui");
 const piAiRoot = findPackageRoot("@mariozechner/pi-ai");
 
@@ -63,9 +65,17 @@ const bunCliPath = piPackageRoot ? resolve(piPackageRoot, "dist", "bun", "cli.js
 const interactiveModePath = piPackageRoot ? resolve(piPackageRoot, "dist", "modes", "interactive", "interactive-mode.js") : null;
 const interactiveThemePath = piPackageRoot ? resolve(piPackageRoot, "dist", "modes", "interactive", "theme", "theme.js") : null;
 const extensionLoaderPath = piPackageRoot ? resolve(piPackageRoot, "dist", "core", "extensions", "loader.js") : null;
+const agentLoopPath = piAgentCoreRoot ? resolve(piAgentCoreRoot, "dist", "agent-loop.js") : null;
 const terminalPath = piTuiRoot ? resolve(piTuiRoot, "dist", "terminal.js") : null;
 const editorPath = piTuiRoot ? resolve(piTuiRoot, "dist", "components", "editor.js") : null;
 const workspaceRoot = resolve(appRoot, ".feynman", "npm", "node_modules");
+const workspaceAgentLoopPath = resolve(
+	workspaceRoot,
+	"@mariozechner",
+	"pi-agent-core",
+	"dist",
+	"agent-loop.js",
+);
 const workspaceExtensionLoaderPath = resolve(
 	workspaceRoot,
 	"@mariozechner",
@@ -90,8 +100,10 @@ const workspaceDir = resolve(appRoot, ".feynman", "npm");
 const workspacePackageJsonPath = resolve(workspaceDir, "package.json");
 const workspaceManifestPath = resolve(workspaceDir, ".runtime-manifest.json");
 const workspaceArchivePath = resolve(appRoot, ".feynman", "runtime-workspace.tgz");
+const workspaceSetupLockDir = resolve(appRoot, ".feynman", ".workspace-setup.lock");
 const globalNodeModulesRoot = resolve(feynmanNpmPrefix, "lib", "node_modules");
 const PRUNE_VERSION = 3;
+const WORKSPACE_SETUP_LOCK_STALE_MS = 300000;
 const NATIVE_PACKAGE_SPECS = new Set([
 	"@kaiserlich-dev/pi-session-search",
 	"@samfp/pi-memory",
@@ -395,9 +407,50 @@ function getPathWithCurrentNode(pathValue = process.env.PATH ?? "") {
 	return parts.includes(nodeDir) ? pathValue : `${nodeDir}${delimiter}${pathValue}`;
 }
 
+function sleepSync(ms) {
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function acquireWorkspaceSetupLock() {
+	mkdirSync(dirname(workspaceSetupLockDir), { recursive: true });
+	const startedAt = Date.now();
+
+	while (true) {
+		try {
+			mkdirSync(workspaceSetupLockDir);
+			writeFileSync(resolve(workspaceSetupLockDir, "owner"), `${process.pid}\n${new Date().toISOString()}\n`, "utf8");
+			return;
+		} catch (error) {
+			if (error?.code !== "EEXIST") throw error;
+			try {
+				if (Date.now() - statSync(workspaceSetupLockDir).mtimeMs > WORKSPACE_SETUP_LOCK_STALE_MS) {
+					rmSync(workspaceSetupLockDir, { recursive: true, force: true });
+					continue;
+				}
+			} catch {}
+			if (Date.now() - startedAt > WORKSPACE_SETUP_LOCK_STALE_MS) {
+				throw new Error("Timed out waiting for another Feynman process to finish package setup.");
+			}
+			sleepSync(100);
+		}
+	}
+}
+
+function releaseWorkspaceSetupLock() {
+	rmSync(workspaceSetupLockDir, { recursive: true, force: true });
+}
+
 function ensurePackageWorkspace() {
 	if (!existsSync(settingsPath)) return;
+	acquireWorkspaceSetupLock();
+	try {
+		ensurePackageWorkspaceUnlocked();
+	} finally {
+		releaseWorkspaceSetupLock();
+	}
+}
 
+function ensurePackageWorkspaceUnlocked() {
 	const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
 	const packageSpecs = Array.isArray(settings.packages)
 		? settings.packages
@@ -597,6 +650,18 @@ for (const loaderPath of [extensionLoaderPath, workspaceExtensionLoaderPath].fil
 	const patched = patchPiExtensionLoaderSource(source);
 	if (patched !== source) {
 		writeFileSync(loaderPath, patched, "utf8");
+	}
+}
+
+for (const entryPath of [agentLoopPath, workspaceAgentLoopPath].filter(Boolean)) {
+	if (!existsSync(entryPath)) {
+		continue;
+	}
+
+	const source = readFileSync(entryPath, "utf8");
+	const patched = patchPiAgentCoreSource(source);
+	if (patched !== source) {
+		writeFileSync(entryPath, patched, "utf8");
 	}
 }
 

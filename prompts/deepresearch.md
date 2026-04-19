@@ -58,6 +58,8 @@ Use subagents only when decomposition clearly helps:
 
 ## Step 3: Gather Evidence
 
+Use only tool names visible in the current tool set. For web search, call `web_search`; never call `google:search`, `google_search`, or `search_google`.
+
 Avoid crash-prone PDF parsing in this workflow. Do not call `alpha_get_paper` and do not fetch `.pdf` URLs unless the user explicitly asks for PDF extraction. Prefer paper metadata, abstracts, HTML pages, official docs, and web snippets. If only a PDF exists, cite the PDF URL from search metadata and mark full-text PDF parsing as blocked instead of fetching it.
 
 If direct search was chosen:

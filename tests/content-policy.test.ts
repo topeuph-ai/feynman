@@ -71,6 +71,27 @@ test("deepresearch workflow requires durable artifacts even when blocked", () =>
 	assert.match(deepResearchPrompt, /Never end with only an explanation in chat after plan approval/i);
 });
 
+test("research workflows use real web-search tool names and grant them to evidence agents", () => {
+	const systemPrompt = readFileSync(join(repoRoot, ".feynman", "SYSTEM.md"), "utf8");
+	const deepResearchPrompt = readFileSync(join(repoRoot, "prompts", "deepresearch.md"), "utf8");
+	const researcherPrompt = readFileSync(join(repoRoot, ".feynman", "agents", "researcher.md"), "utf8");
+	const verifierPrompt = readFileSync(join(repoRoot, ".feynman", "agents", "verifier.md"), "utf8");
+
+	assert.match(systemPrompt, /call `web_search`/i);
+	assert.match(systemPrompt, /do not call non-existent aliases such as `google:search`/i);
+	assert.match(deepResearchPrompt, /call `web_search`/i);
+	assert.match(deepResearchPrompt, /never call `google:search`/i);
+
+	for (const [label, content] of [
+		["researcher prompt", researcherPrompt],
+		["verifier prompt", verifierPrompt],
+	] as const) {
+		assert.match(content, /^tools: .*web_search/m, `${label} must grant web_search`);
+		assert.match(content, /^tools: .*fetch_content/m, `${label} must grant fetch_content`);
+		assert.match(content, /^tools: .*get_search_content/m, `${label} must grant get_search_content`);
+	}
+});
+
 test("deepresearch asks for confirmation after planning before execution", () => {
 	const deepResearchPrompt = readFileSync(join(repoRoot, "prompts", "deepresearch.md"), "utf8");
 

@@ -2,7 +2,7 @@
 name: researcher
 description: Gather primary evidence across papers, web sources, repos, docs, and local artifacts.
 thinking: high
-tools: read, bash, grep, find, ls
+tools: read, write, edit, bash, grep, find, ls, web_search, fetch_content, get_search_content
 output: research.md
 defaultProgress: true
 ---

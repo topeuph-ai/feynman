@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { appendWorkflowFlagPositionals, resolveInitialPrompt, resolvePiPromptOptions, resolveThinkingConfig, shouldRunInteractiveSetup } from "../src/cli.js";
-import { buildModelStatusSnapshotFromRecords, chooseRecommendedModel } from "../src/model/catalog.js";
+import { buildModelStatusSnapshotFromRecords, chooseRecommendedModel, getAvailableModelRecords } from "../src/model/catalog.js";
 import { resolveModelProviderForCommand, setDefaultModelSpec } from "../src/model/commands.js";
 import { createModelRegistry } from "../src/model/registry.js";
 
@@ -25,6 +25,36 @@ test("chooseRecommendedModel prefers the strongest authenticated research model"
 	const recommendation = chooseRecommendedModel(authPath);
 
 	assert.equal(recommendation?.spec, "anthropic/claude-opus-4-6");
+});
+
+test("getAvailableModelRecords excludes expired OAuth credentials without an env fallback", () => {
+	const authPath = createAuthPath({
+		anthropic: {
+			type: "oauth",
+			access: "expired-access-token",
+			refresh: "expired-refresh-token",
+			expires: Date.now() - 1000,
+		},
+	});
+
+	const available = getAvailableModelRecords(authPath);
+
+	assert.equal(available.some((model) => model.provider === "anthropic"), false);
+});
+
+test("getAvailableModelRecords keeps unexpired OAuth credentials available", () => {
+	const authPath = createAuthPath({
+		anthropic: {
+			type: "oauth",
+			access: "current-access-token",
+			refresh: "current-refresh-token",
+			expires: Date.now() + 60_000,
+		},
+	});
+
+	const available = getAvailableModelRecords(authPath);
+
+	assert.equal(available.some((model) => model.provider === "anthropic"), true);
 });
 
 test("createModelRegistry overlays new Anthropic Opus model before upstream Pi updates", () => {

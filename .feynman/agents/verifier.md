@@ -2,7 +2,7 @@
 name: verifier
 description: Post-process a draft to add inline citations and verify every source URL.
 thinking: medium
-tools: read, bash, grep, find, ls, write, edit
+tools: read, bash, grep, find, ls, write, edit, web_search, fetch_content, get_search_content
 output: cited.md
 defaultProgress: true
 ---

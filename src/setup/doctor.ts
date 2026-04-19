@@ -48,6 +48,7 @@ export type FeynmanStatusSnapshot = {
 	modelValid: boolean;
 	recommendedModel?: string;
 	recommendedModelReason?: string;
+	availableModels: string[];
 	authenticatedModelCount: number;
 	authenticatedProviderCount: number;
 	modelGuidance: string[];
@@ -78,6 +79,7 @@ export function collectStatusSnapshot(options: DoctorOptions): FeynmanStatusSnap
 		modelValid: modelStatus.currentValid,
 		recommendedModel: modelStatus.recommended,
 		recommendedModelReason: modelStatus.recommendationReason,
+		availableModels: modelStatus.availableModels,
 		authenticatedModelCount: modelStatus.availableModels.length,
 		authenticatedProviderCount: modelStatus.providers.filter((provider) => provider.configured).length,
 		modelGuidance: modelStatus.guidance,
@@ -132,7 +134,8 @@ export function runStatus(options: DoctorOptions): void {
 export function runDoctor(options: DoctorOptions): void {
 	const settings = readJson(options.settingsPath);
 	const modelRegistry = createModelRegistry(options.authPath);
-	const availableModels = modelRegistry.getAvailable();
+	const supportedModels = getSupportedModelRecords(options.authPath);
+	const modelStatus = collectStatusSnapshot(options);
 	const pandocPath = resolveExecutable("pandoc", PANDOC_FALLBACK_PATHS);
 	const browserPath = process.env.PUPPETEER_EXECUTABLE_PATH ?? resolveExecutable("google-chrome", BROWSER_FALLBACK_PATHS);
 	const missingPiBits = validatePiInstallation(options.appRoot);
@@ -150,20 +153,18 @@ export function runDoctor(options: DoctorOptions): void {
 			console.log(`  user: ${name}`);
 		}
 	}
-	console.log(`models available: ${availableModels.length}`);
-	if (availableModels.length > 0) {
-		const sample = availableModels
+	console.log(`supported models: ${supportedModels.length}`);
+	if (modelStatus.availableModels.length > 0) {
+		const sample = modelStatus.availableModels
 			.slice(0, 6)
-			.map((model) => `${model.provider}/${model.id}`)
 			.join(", ");
-		console.log(`  sample: ${sample}`);
+		console.log(`  authenticated sample: ${sample}`);
 	}
 	console.log(
 		`default model: ${typeof settings.defaultProvider === "string" && typeof settings.defaultModel === "string"
 			? `${settings.defaultProvider}/${settings.defaultModel}`
 			: "not set"}`,
 	);
-	const modelStatus = collectStatusSnapshot(options);
 	console.log(`default model valid: ${modelStatus.modelValid ? "yes" : "no"}`);
 	console.log(`authenticated providers: ${modelStatus.authenticatedProviderCount}`);
 	console.log(`authenticated models: ${modelStatus.authenticatedModelCount}`);

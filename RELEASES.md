@@ -4,6 +4,21 @@ This file is the public release history for Feynman. Keep entries user-facing: w
 
 GitHub release notes are generated from the matching `## vX.Y.Z` section in this file.
 
+## v0.2.40 - 2026-04-19
+
+### Fixes
+
+- Fixed local-model web-search failures where a model calls non-existent search aliases such as `google:search`; Feynman now maps those aliases to Pi's real `web_search` tool when it is available.
+- Granted the bundled researcher and verifier agents access to Pi web-access tools (`web_search`, `fetch_content`, and `get_search_content`) so their prompts and allowed tools match.
+- Made `feynman doctor` and `feynman search status` explicitly show when `web-search.json` has not been created and how to initialize it.
+- Stopped treating expired OAuth credentials as authenticated model availability, so `doctor`, `model list`, and onboarding guide users to re-login instead of failing later in chat.
+- Added a package-workspace setup lock so concurrent Feynman invocations do not race while restoring `.feynman/npm`.
+
+### Validation
+
+- Full local tests passed: 137/137.
+- Typecheck, build, vendored runtime regeneration, runtime archive inspection, sequential CLI smoke, and parallel CLI smoke passed.
+
 ## v0.2.39 - 2026-04-19
 
 ### Fixes

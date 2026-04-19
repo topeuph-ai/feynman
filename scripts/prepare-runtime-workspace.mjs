@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
+import { patchPiAgentCoreSource } from "./lib/pi-agent-core-patch.mjs";
 import { PI_SUBAGENTS_PATCH_TARGETS, patchPiSubagentsSource, stripPiSubagentBuiltinModelSource } from "./lib/pi-subagents-patch.mjs";
 
 const appRoot = resolve(import.meta.dirname, "..");
@@ -72,7 +73,13 @@ function hashFile(path) {
 
 function getRuntimeInputHash() {
 	const hash = createHash("sha256");
-	for (const path of [packageJsonPath, packageLockPath, settingsPath, resolve(appRoot, "scripts", "lib", "pi-subagents-patch.mjs")]) {
+	for (const path of [
+		packageJsonPath,
+		packageLockPath,
+		settingsPath,
+		resolve(appRoot, "scripts", "lib", "pi-agent-core-patch.mjs"),
+		resolve(appRoot, "scripts", "lib", "pi-subagents-patch.mjs"),
+	]) {
 		hash.update(path);
 		hash.update("\0");
 		hash.update(hashFile(path) ?? "missing");
@@ -221,6 +228,21 @@ function patchBundledPiSubagents() {
 	return changed;
 }
 
+function patchBundledPiAgentCore() {
+	const agentLoopPath = resolve(workspaceNodeModulesDir, "@mariozechner", "pi-agent-core", "dist", "agent-loop.js");
+	if (!existsSync(agentLoopPath)) {
+		return false;
+	}
+
+	const source = readFileSync(agentLoopPath, "utf8");
+	const patched = patchPiAgentCoreSource(source);
+	if (patched === source) {
+		return false;
+	}
+	writeFileSync(agentLoopPath, patched, "utf8");
+	return true;
+}
+
 function archiveIsCurrent() {
 	if (!existsSync(workspaceArchivePath) || !existsSync(manifestPath)) {
 		return false;
@@ -244,9 +266,9 @@ const packageSpecs = readPackageSpecs();
 
 if (workspaceIsCurrent(packageSpecs)) {
 	console.log("[feynman] vendored runtime workspace already up to date");
-	if (patchBundledPiSubagents()) {
+	if (patchBundledPiAgentCore() || patchBundledPiSubagents()) {
 		writeManifest(packageSpecs);
-		console.log("[feynman] patched bundled pi-subagents");
+		console.log("[feynman] patched bundled Pi runtime");
 	}
 	if (archiveIsCurrent()) {
 		process.exit(0);
@@ -260,6 +282,7 @@ if (workspaceIsCurrent(packageSpecs)) {
 console.log("[feynman] preparing vendored runtime workspace...");
 prepareWorkspace(packageSpecs);
 pruneWorkspace();
+patchBundledPiAgentCore();
 patchBundledPiSubagents();
 writeManifest(packageSpecs);
 createWorkspaceArchive();

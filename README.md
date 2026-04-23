@@ -25,9 +25,15 @@ curl -fsSL https://feynman.is/install | bash
 irm https://feynman.is/install.ps1 | iex
 ```
 
-The one-line installer fetches the latest tagged release. To pin a version, pass it explicitly, for example `curl -fsSL https://feynman.is/install | bash -s -- 0.2.16`.
+The one-line installer fetches the latest tagged release. To pin a version, pass it explicitly, for example `curl -fsSL https://feynman.is/install | bash -s -- 0.2.35`.
 
-If you install via `pnpm` or `bun` instead of the standalone bundle, Feynman requires Node.js `20.19.0` or newer.
+The installer downloads a standalone native bundle with its own Node.js runtime.
+
+To upgrade the standalone app later, rerun the installer. `feynman update` only refreshes installed Pi packages inside Feynman's environment; it does not replace the standalone runtime bundle itself.
+
+To uninstall the standalone app, remove the launcher and runtime bundle, then optionally remove `~/.feynman` if you also want to delete settings, sessions, and installed package state. If you also want to delete alphaXiv login state, remove `~/.ahub`. See the installation guide for platform-specific paths.
+
+Local models are supported through the setup flow. For LM Studio, run `feynman setup`, choose `LM Studio`, and keep the default `http://localhost:1234/v1` unless you changed the server port. For LiteLLM, choose `LiteLLM Proxy` and keep the default `http://localhost:4000/v1`. For Ollama or vLLM, choose `Custom provider (baseUrl + API key)`, use `openai-completions`, and point it at the local `/v1` endpoint.
 
 ### Skills Only
 
@@ -62,6 +68,8 @@ curl -fsSL https://feynman.is/install-skills | bash -s -- --repo
 ```
 
 That installs into `.agents/skills/feynman` under the current repository.
+
+These installers download the bundled `skills/` and `prompts/` trees plus the repo guidance files referenced by those skills. They do not install the Feynman terminal, bundled Node runtime, auth storage, or Pi packages.
 
 ---
 
@@ -134,6 +142,18 @@ Built on [Pi](https://github.com/badlogic/pi-mono) for the agent runtime, [alpha
 
 ---
 
+### Star History
+
+<a href="https://www.star-history.com/?repos=getcompanion-ai%2Ffeynman&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=getcompanion-ai/feynman&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=getcompanion-ai/feynman&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=getcompanion-ai/feynman&type=date&legend=top-left" />
+  </picture>
+</a>
+
+---
+
 ### Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
@@ -148,4 +168,4 @@ npm run typecheck
 npm run build
 ```
 
-[Docs](https://feynman.is/docs) · [MIT License](LICENSE)
+[Docs](https://feynman.is/docs) · [Release Notes](RELEASES.md) · [MIT License](LICENSE)

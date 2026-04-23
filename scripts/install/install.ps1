@@ -109,8 +109,8 @@ This usually means the release exists, but not all platform bundles were uploade
 
 Workarounds:
   - try again after the release finishes publishing
-  - install via pnpm instead: pnpm add -g @companion-ai/feynman
-  - install via bun instead: bun add -g @companion-ai/feynman
+  - pass the latest published version explicitly, e.g.:
+    & ([scriptblock]::Create((irm https://feynman.is/install.ps1))) -Version 0.2.31
 "@
   }
 
@@ -125,11 +125,17 @@ Workarounds:
   New-Item -ItemType Directory -Path $installBinDir -Force | Out-Null
 
   $shimPath = Join-Path $installBinDir "feynman.cmd"
+  $shimPs1Path = Join-Path $installBinDir "feynman.ps1"
   Write-Host "==> Linking feynman into $installBinDir"
   @"
 @echo off
-"$bundleDir\feynman.cmd" %*
+CALL "$bundleDir\feynman.cmd" %*
 "@ | Set-Content -Path $shimPath -Encoding ASCII
+
+  @"
+`$BundleDir = "$bundleDir"
+& "`$BundleDir\node\node.exe" "`$BundleDir\app\bin\feynman.js" @args
+"@ | Set-Content -Path $shimPs1Path -Encoding UTF8
 
   $currentUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
   $alreadyOnPath = $false
@@ -153,9 +159,7 @@ Workarounds:
     Write-Warning "Current shell resolves feynman to $($resolvedCommand.Source)"
     Write-Host "Run in a new shell, or run: `$env:Path = '$installBinDir;' + `$env:Path"
     Write-Host "Then run: feynman"
-    if ($resolvedCommand.Source -like "*node_modules*@companion-ai*feynman*") {
-      Write-Host "If that path is an old global npm install, remove it with: npm uninstall -g @companion-ai/feynman"
-    }
+    Write-Host "If that path is an old package-manager install, remove it or put $installBinDir first on PATH."
   }
 
   Write-Host "Feynman $resolvedVersion installed successfully."

@@ -5,7 +5,7 @@ description: Autonomous experiment loop that tries ideas, measures results, keep
 
 # Autoresearch
 
-Run the `/autoresearch` workflow. Read the prompt template at `prompts/autoresearch.md` for the full procedure.
+Run the `/autoresearch` workflow. The slash command expands the full workflow instructions in the active session; do not try to read a relative prompt-template path from the installed skill directory.
 
 Tools used: `init_experiment`, `run_experiment`, `log_experiment` (from pi-autoresearch)
 

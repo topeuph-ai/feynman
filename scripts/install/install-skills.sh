@@ -146,15 +146,17 @@ archive_metadata="$(resolve_version)"
 resolved_version="$(printf '%s\n' "$archive_metadata" | sed -n '1p')"
 git_ref="$(printf '%s\n' "$archive_metadata" | sed -n '2p')"
 
-archive_url=""
-case "$git_ref" in
-  main)
-    archive_url="https://github.com/getcompanion-ai/feynman/archive/refs/heads/main.tar.gz"
-    ;;
-  v*)
-    archive_url="https://github.com/getcompanion-ai/feynman/archive/refs/tags/${git_ref}.tar.gz"
-    ;;
-esac
+archive_url="${FEYNMAN_INSTALL_SKILLS_ARCHIVE_URL:-}"
+if [ -z "$archive_url" ]; then
+  case "$git_ref" in
+    main)
+      archive_url="https://github.com/getcompanion-ai/feynman/archive/refs/heads/main.tar.gz"
+      ;;
+    v*)
+      archive_url="https://github.com/getcompanion-ai/feynman/archive/refs/tags/${git_ref}.tar.gz"
+      ;;
+  esac
+fi
 
 if [ -z "$archive_url" ]; then
   echo "Could not resolve a download URL for ref: $git_ref" >&2
@@ -181,8 +183,8 @@ step "Extracting skills"
 tar -xzf "$archive_path" -C "$extract_dir"
 
 source_root="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-if [ -z "$source_root" ] || [ ! -d "$source_root/skills" ]; then
-  echo "Could not find skills/ in downloaded archive." >&2
+if [ -z "$source_root" ] || [ ! -d "$source_root/skills" ] || [ ! -d "$source_root/prompts" ]; then
+  echo "Could not find the bundled skills resources in the downloaded archive." >&2
   exit 1
 fi
 
@@ -190,6 +192,10 @@ mkdir -p "$(dirname "$install_dir")"
 rm -rf "$install_dir"
 mkdir -p "$install_dir"
 cp -R "$source_root/skills/." "$install_dir/"
+mkdir -p "$install_dir/prompts"
+cp -R "$source_root/prompts/." "$install_dir/prompts/"
+cp "$source_root/AGENTS.md" "$install_dir/AGENTS.md"
+cp "$source_root/CONTRIBUTING.md" "$install_dir/CONTRIBUTING.md"
 
 step "Installed skills to $install_dir"
 case "$SCOPE" in

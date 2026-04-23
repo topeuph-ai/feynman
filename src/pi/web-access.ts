@@ -1,12 +1,15 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { getFeynmanHome } from "../config/paths.js";
 
 export type PiWebSearchProvider = "auto" | "perplexity" | "exa" | "gemini";
+export type PiWebSearchWorkflow = "none" | "summary-review";
 
 export type PiWebAccessConfig = Record<string, unknown> & {
+	route?: PiWebSearchProvider;
 	provider?: PiWebSearchProvider;
 	searchProvider?: PiWebSearchProvider;
+	workflow?: PiWebSearchWorkflow;
 	perplexityApiKey?: string;
 	exaApiKey?: string;
 	geminiApiKey?: string;
@@ -15,8 +18,10 @@ export type PiWebAccessConfig = Record<string, unknown> & {
 
 export type PiWebAccessStatus = {
 	configPath: string;
+	configExists: boolean;
 	searchProvider: PiWebSearchProvider;
 	requestProvider: PiWebSearchProvider;
+	workflow: PiWebSearchWorkflow;
 	perplexityConfigured: boolean;
 	exaConfigured: boolean;
 	geminiApiConfigured: boolean;
@@ -25,12 +30,17 @@ export type PiWebAccessStatus = {
 	note: string;
 };
 
-export function getPiWebSearchConfigPath(home = process.env.HOME ?? homedir()): string {
-	return resolve(home, ".feynman", "web-search.json");
+export function getPiWebSearchConfigPath(home?: string): string {
+	const feynmanHome = home ? resolve(home, ".feynman") : getFeynmanHome();
+	return resolve(feynmanHome, "web-search.json");
 }
 
 function normalizeProvider(value: unknown): PiWebSearchProvider | undefined {
 	return value === "auto" || value === "perplexity" || value === "exa" || value === "gemini" ? value : undefined;
+}
+
+function normalizeWorkflow(value: unknown): PiWebSearchWorkflow | undefined {
+	return value === "none" || value === "summary-review" ? value : undefined;
 }
 
 function normalizeNonEmptyString(value: unknown): string | undefined {
@@ -48,6 +58,23 @@ export function loadPiWebAccessConfig(configPath = getPiWebSearchConfigPath()): 
 	} catch {
 		return {};
 	}
+}
+
+export function savePiWebAccessConfig(
+	updates: Partial<Record<keyof PiWebAccessConfig, unknown>>,
+	configPath = getPiWebSearchConfigPath(),
+): void {
+	const merged: Record<string, unknown> = { ...loadPiWebAccessConfig(configPath) };
+	for (const [key, value] of Object.entries(updates)) {
+		if (value === undefined) {
+			delete merged[key];
+		} else {
+			merged[key] = value;
+		}
+	}
+
+	mkdirSync(dirname(configPath), { recursive: true });
+	writeFileSync(configPath, JSON.stringify(merged, null, 2) + "\n", "utf8");
 }
 
 function formatRouteLabel(provider: PiWebSearchProvider): string {
@@ -80,8 +107,10 @@ export function getPiWebAccessStatus(
 	config: PiWebAccessConfig = loadPiWebAccessConfig(),
 	configPath = getPiWebSearchConfigPath(),
 ): PiWebAccessStatus {
-	const searchProvider = normalizeProvider(config.searchProvider) ?? "auto";
-	const requestProvider = normalizeProvider(config.provider) ?? searchProvider;
+	const searchProvider =
+		normalizeProvider(config.searchProvider) ?? normalizeProvider(config.route) ?? normalizeProvider(config.provider) ?? "auto";
+	const requestProvider = normalizeProvider(config.provider) ?? normalizeProvider(config.route) ?? searchProvider;
+	const workflow = normalizeWorkflow(config.workflow) ?? "none";
 	const perplexityConfigured = Boolean(normalizeNonEmptyString(config.perplexityApiKey));
 	const exaConfigured = Boolean(normalizeNonEmptyString(config.exaApiKey));
 	const geminiApiConfigured = Boolean(normalizeNonEmptyString(config.geminiApiKey));
@@ -90,8 +119,10 @@ export function getPiWebAccessStatus(
 
 	return {
 		configPath,
+		configExists: existsSync(configPath),
 		searchProvider,
 		requestProvider,
+		workflow,
 		perplexityConfigured,
 		exaConfigured,
 		geminiApiConfigured,
@@ -104,15 +135,21 @@ export function getPiWebAccessStatus(
 export function formatPiWebAccessDoctorLines(
 	status: PiWebAccessStatus = getPiWebAccessStatus(),
 ): string[] {
-	return [
+	const configPathSuffix = status.configExists ? "" : " (not created yet)";
+	const lines = [
 		"web access: pi-web-access",
 		`  search route: ${status.routeLabel}`,
 		`  request route: ${status.requestProvider}`,
+		`  search workflow: ${status.workflow}`,
 		`  perplexity api: ${status.perplexityConfigured ? "configured" : "not configured"}`,
 		`  exa api: ${status.exaConfigured ? "configured" : "not configured"}`,
 		`  gemini api: ${status.geminiApiConfigured ? "configured" : "not configured"}`,
 		`  browser profile: ${status.chromeProfile ?? "default Chromium profile"}`,
-		`  config path: ${status.configPath}`,
+		`  config path: ${status.configPath}${configPathSuffix}`,
 		`  note: ${status.note}`,
 	];
+	if (!status.configExists) {
+		lines.push("  hint: run `feynman search set <auto|perplexity|exa|gemini> [api-key]` to configure web search");
+	}
+	return lines;
 }

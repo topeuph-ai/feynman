@@ -15,6 +15,78 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Blockers: ...
 - Next: ...
 
+### 2026-04-12 00:00 local — capital-france
+
+- Objective: Run an unattended deep-research workflow for the question "What is the capital of France?"
+- Changed: Created plan artifact at `outputs/.plans/capital-france.md`; scoped the workflow as a narrow fact-verification run with direct lead-agent evidence gathering instead of researcher subagents.
+- Verified: Read existing `CHANGELOG.md` and recalled prior saved plan memory for `capital-france` before finalizing the new run plan.
+- Failed / learned: None yet.
+- Blockers: Need at least two current independent authoritative sources and a quick ambiguity check before drafting.
+- Next: Collect current official/public sources, resolve any legal nuance, then draft and verify the brief.
+
+### 2026-04-12 00:20 local — capital-france
+
+- Objective: Complete evidence gathering and ambiguity check for the capital-of-France workflow.
+- Changed: Wrote `notes/capital-france-research-web.md` and `notes/capital-france-legal-context.md`; identified Insee (2024) and a Sénat report as the two main corroborating sources.
+- Verified: Cross-read current public French sources that explicitly describe Paris as the capital/capital city of France; found no current contradiction.
+- Failed / learned: The Presidency homepage was useful contextual support but not explicit enough to carry the core claim alone.
+- Blockers: Need citation pass and final review pass before promotion.
+- Next: Draft the brief, then run verifier and reviewer passes.
+
+### 2026-04-12 00:35 local — capital-france
+
+- Objective: Move from gathered evidence to a citable draft.
+- Changed: Wrote `outputs/.drafts/capital-france-draft.md` and updated the plan ledger to mark drafting complete.
+- Verified: Kept the core claim narrowly scoped to what the Insee and Sénat sources explicitly support; treated the Élysée page as contextual only.
+- Failed / learned: None.
+- Blockers: Need verifier URL/citation pass and reviewer verification pass before final promotion.
+- Next: Run verifier on the draft, then review and promote the final brief.
+
+### 2026-04-12 00:50 local — capital-france
+
+- Objective: Complete citation, verification, and final promotion for the capital-of-France workflow.
+- Changed: Produced `outputs/capital-france-brief.md`, ran verification into `notes/capital-france-verification.md`, promoted the final brief to `outputs/capital-france.md`, and wrote `outputs/capital-france.provenance.md`.
+- Verified: Reviewer found no FATAL or MAJOR issues. Core claim remains backed by two independent French public-institution sources, with Insee as the primary explicit source and the Sénat report as corroboration.
+- Failed / learned: The runtime did not expose a named `verifier` subagent, so I used an available worker in a verifier-equivalent role and recorded that deviation in the plan.
+- Blockers: None.
+- Next: If needed, extend the brief with deeper legal-historical sourcing, but the narrow factual question is sufficiently answered.
+
+### 2026-04-12 10:05 local — capital-france
+
+- Objective: Run the citation-verification pass on the capital-of-France draft and promote a final cited brief.
+- Changed: Verified the three draft source URLs were live (HTTP 200 at check time), added numbered inline citations, downgraded unsupported phrasing around the Élysée/context and broad ambiguity claims, and wrote `outputs/capital-france-brief.md`.
+- Verified: Confirmed Insee explicitly says Paris is the capital of France; confirmed the Sénat report describes Paris’s capital status and the presence of national institutions; confirmed the Élysée homepage is contextual only and not explicit enough to carry the core claim.
+- Failed / learned: The draft wording about the Presidency being seated in Paris was not directly supported by the cited homepage, so it was removed rather than carried forward.
+- Blockers: Reviewer pass still pending if the workflow requires an adversarial final check.
+- Next: If needed, run a final reviewer pass; otherwise use `outputs/capital-france-brief.md` as the canonical brief.
+
+### 2026-04-12 10:20 local — capital-france
+
+- Objective: Close the workflow with final review, final artifact promotion, and provenance.
+- Changed: Ran a reviewer pass recorded in `notes/capital-france-verification.md`; promoted the cited brief into `outputs/capital-france.md`; wrote `outputs/capital-france.provenance.md`; updated the run plan to mark all tasks complete.
+- Verified: Reviewer verdict was PASS WITH MINOR REVISIONS only; those minor wording fixes were applied before delivery.
+- Failed / learned: The runtime did not expose a project-named `verifier` agent, so the citation pass used an available worker agent as a verifier-equivalent step.
+- Blockers: None.
+- Next: Optional only — produce a legal memorandum on the basis of Paris's capital status if requested.
+
+### 2026-04-14 12:00 local — capital-belgium
+
+- Objective: Run a deep-research workflow for the question "What is the capital of Belgium?"
+- Changed: Created plan artifact at `outputs/.plans/capital-belgium.md`; gathered evidence into `notes/capital-belgium-research-web.md` from Belgium.be, FPS Foreign Affairs, Britannica, and a Belgian Senate constitution check.
+- Verified: Found two explicit current Belgian government statements that Brussels is the federal capital of Belgium, plus independent Britannica corroboration; no conflicting nuance surfaced in the consulted legal text.
+- Failed / learned: This is narrow enough that researcher subagents would add overhead without increasing evidence quality.
+- Blockers: Need draft, citation/URL verification pass, final review pass, and promotion.
+- Next: Draft the brief, run verifier-equivalent and reviewer passes, then promote final output with provenance.
+
+### 2026-04-14 12:25 local — capital-belgium
+
+- Objective: Complete citation, verification, and final promotion for the capital-of-Belgium workflow.
+- Changed: Wrote `outputs/.drafts/capital-belgium-draft.md`; produced cited brief `outputs/capital-belgium-brief.md`; ran verification into `notes/capital-belgium-verification.md`; promoted final output to `outputs/capital-belgium.md`; wrote `outputs/capital-belgium.provenance.md`; updated the plan ledger and verification log.
+- Verified: Core claim is now backed by Belgium.be, Belgian Foreign Affairs, Britannica, and direct constitutional text from Senate-hosted Article 194 stating that Brussels is the capital of Belgium and the seat of the federal government.
+- Failed / learned: The runtime did not expose a named `verifier` subagent, so a worker performed a verifier-equivalent citation/URL check; reviewer surfaced a stronger constitutional source than the first draft had emphasized.
+- Blockers: None.
+- Next: Optional only — if requested, expand this into a legal-historical note on Brussels’s capital status and the distinction between city, region, and federal institutions.
+
 ### 2026-03-25 00:00 local — scaling-laws
 
 - Objective: Set up a deep research workflow for scaling laws.
@@ -113,3 +185,130 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Failed / learned: The remaining ValiChord PR is still stale and mixes a real prompt/skill update with unrelated branch churn; it is a review/triage item, not a clean merge candidate.
 - Blockers: No local build blockers remain; issue/PR closure still depends on the final push landing on `main`.
 - Next: Push the verified cleanup commit, then close issues fixed by the dependency bump plus the new discoverability/service-tier/Windows patches, and close the stale ValiChord PR explicitly instead of leaving it open indefinitely.
+
+### 2026-04-09 09:37 PDT — windows-startup-import-specifiers
+
+- Objective: Fix Windows startup failures where `feynman` exits before the Pi child process initializes.
+- Changed: Converted the Node preload module paths passed via `node --import` in `src/pi/launch.ts` to `file://` specifiers using a new `toNodeImportSpecifier(...)` helper in `src/pi/runtime.ts`; expanded `scripts/patch-embedded-pi.mjs` so it also patches the bundled workspace copy of Pi's extension loader when present.
+- Verified: Added a regression test in `tests/pi-runtime.test.ts` covering absolute-path to `file://` conversion for preload imports; ran `npm test`, `npm run typecheck`, and `npm run build`.
+- Failed / learned: The raw Windows `ERR_UNSUPPORTED_ESM_URL_SCHEME` stack is more consistent with Node rejecting the child-process `--import C:\\...` preload before Pi starts than with a normal in-app extension load failure.
+- Blockers: Windows runtime execution was not available locally, so the fix is verified by code path inspection and automated tests rather than an actual Windows shell run.
+- Next: Ask the affected user to reinstall or update to the next published package once released, and confirm the Windows REPL now starts from a normal PowerShell session.
+
+### 2026-04-09 11:02 PDT — tracker-hardening-pass
+
+- Objective: Triage the open repo backlog, land the highest-signal fixes locally, and add guardrails against stale promotional workflow content.
+- Changed: Hardened Windows launch paths in `bin/feynman.js`, `scripts/build-native-bundle.mjs`, and `scripts/install/install.ps1`; set npm prefix overrides earlier in `scripts/patch-embedded-pi.mjs`; added a `pi-web-access` runtime patch helper plus `FEYNMAN_WEB_SEARCH_CONFIG` env wiring so bundled web search reads the same `~/.feynman/web-search.json` that doctor/status report; taught `src/pi/web-access.ts` to honor the legacy `route` key; fixed bundled skill references and expanded the skills-only installers/docs to ship the prompt and guidance files those skills reference; added regression tests for config paths, catalog snapshot edges, skill-path packaging, `pi-web-access` patching, and blocked promotional content.
+- Verified: Ran `npm test`, `npm run typecheck`, and `npm run build` successfully after the full maintenance pass.
+- Failed / learned: The skills-only install issue was not just docs drift; the shipped `SKILL.md` files referenced prompt paths that only made sense after installation, so the repo needed both path normalization and packaging changes.
+- Blockers: Remote issue/PR closure and merge actions still depend on the final reviewed branch state being pushed.
+- Next: Push the validated fixes, close the duplicate Windows/reporting issues they supersede, reject the promotional ValiChord PR explicitly, and then review whether the remaining docs-only or feature PRs should be merged separately.
+
+### 2026-04-09 10:28 PDT — verification-and-security-pass
+
+- Objective: Run a deeper install/security verification pass against the post-cleanup `0.2.17` tree instead of assuming the earlier targeted fixes covered the shipped artifacts.
+- Changed: Reworked `extensions/research-tools/header.ts` to use `@mariozechner/pi-tui` width-aware helpers for truncation/wrapping so wide Unicode text does not overflow custom header rows; changed `src/pi/launch.ts` to stop mirroring child crash signals back onto the parent process and instead emit a conventional exit code; added `FEYNMAN_INSTALL_SKILLS_ARCHIVE_URL` overrides to the skills installers for pre-release smoke testing; aligned root and website dependency trees with patched transitive versions using npm `overrides`; fixed `src/pi/web-access.ts` so `search status` respects `FEYNMAN_HOME` semantics instead of hardcoding the current shell home directory; added `tests/pi-launch.test.ts`.
+- Verified: Ran `npm test`, `npm run typecheck`, `npm run build`, `cd website && npm run build`, `npm run build:native-bundle`; smoke-tested `scripts/install/install.sh` against a locally served `dist/release/feynman-0.2.17-darwin-arm64.tar.gz`; smoke-tested `scripts/install/install-skills.sh` against a local source archive; confirmed installed `feynman --version`, `feynman --help`, `feynman doctor`, and packaged `feynman search status` work from the installed bundle; `npm audit --omit=dev` is clean in the root app and website after overrides.
+- Failed / learned: The first packaged `search status` smoke test still showed the user home path because the native bundle had been built before the `FEYNMAN_HOME` path fix; rebuilding the native bundle resolved that mismatch.
+- Blockers: PowerShell runtime was unavailable locally, so Windows installer execution remained code-path validated rather than actually executed.
+- Next: Push the second-pass hardening commit, then keep issue `#46` and issue `#47` open until users on the affected Linux/CJK environments confirm whether the launcher/header fixes fully resolve them.
+
+### 2026-04-09 10:36 PDT — remaining-tracker-triage-pass
+
+- Objective: Reduce the remaining open tracker items by landing the lowest-risk missing docs/catalog updates and a targeted Cloud Code Assist compatibility patch instead of only hand-triaging them.
+- Changed: Added MiniMax M2.7 recommendation preferences in `src/model/catalog.ts`; documented model switching, authenticated-provider visibility, and `/feynman-model` subagent overrides in `website/src/content/docs/getting-started/configuration.md` and `website/src/content/docs/reference/slash-commands.md`; added a runtime patch helper in `scripts/lib/pi-google-legacy-schema-patch.mjs` and wired `scripts/patch-embedded-pi.mjs` to normalize JSON Schema `const` into `enum` for the legacy `parameters` field used by Cloud Code Assist Claude models.
+- Verified: Ran `npm test`, `npm run typecheck`, `npm run build`, and `cd website && npm run build` after the patch/helper/docs changes.
+- Failed / learned: The MiniMax provider catalog in Pi already uses canonical IDs like `MiniMax-M2.7`, so the only failure during validation was a test assertion using the wrong casing rather than a runtime bug.
+- Blockers: The Cloud Code Assist fix is validated by targeted patch tests and code-path review rather than an end-to-end Google account repro in this environment.
+- Next: Push the tracker-triage commit, close the docs/MiniMax PRs as superseded by main, close the support-style model issues against the new docs, and decide whether the remaining feature requests should be left open or closed as not planned/upstream-dependent.
+
+### 2026-04-10 10:22 PDT — web-access-stale-override-fix
+
+- Objective: Fix the new `ctx.modelRegistry.getApiKeyAndHeaders is not a function` / stale `search-filter.js` report without reintroducing broad vendor drift.
+- Changed: Removed the stale `.feynman/vendor-overrides/pi-web-access/*` files and removed `syncVendorOverride` from `scripts/patch-embedded-pi.mjs`; kept the targeted `pi-web-access` runtime config-path patch; added `feynman search set <provider> [api-key]` and `feynman search clear` commands with a shared save path in `src/pi/web-access.ts`.
+- Verified: Ran `npm test`, `npm run typecheck`, `npm run build`; ran `node scripts/patch-embedded-pi.mjs`, confirmed the installed `pi-web-access/index.ts` has no `search-filter` / condense helper references, and smoke-imported `./.feynman/npm/node_modules/pi-web-access/index.ts`; ran `npm pack --dry-run` and confirmed stale `vendor-overrides` files are no longer in the package tarball.
+- Failed / learned: The public Linux installer Docker test was attempted but Docker Desktop became unresponsive even for simple `docker run node:22-bookworm node -v` commands; the earlier Linux npm-artifact container smoke remains valid, but this specific public-installer run is blocked by the local Docker daemon.
+- Blockers: Issue `#54` is too underspecified to fix directly without logs; public Linux installer behavior still needs a stable Docker daemon or a real Linux shell to reproduce the user's exact npm errors.
+- Next: Push the stale-override fix, close PR `#52` and PR `#53` as superseded/merged-by-main once pushed, and ask for logs on issue `#54` instead of guessing.
+
+### 2026-04-10 10:49 PDT — rpc-and-website-verification-pass
+
+- Objective: Exercise the Feynman wrapper's RPC mode and the website quality gates that were not fully covered by the prior passes.
+- Changed: Added `--mode <text|json|rpc>` pass-through support in the Feynman wrapper and skipped terminal clearing in RPC mode; added `@astrojs/check` to the website dev dependencies, fixed React Refresh lint violations in the generated UI components by exporting only components, and added safe website dependency overrides for dev-audit findings.
+- Verified: Ran a JSONL RPC smoke test through `node bin/feynman.js --mode rpc` with `get_state`; ran `npm test`, `npm run typecheck`, `npm run build`, `cd website && npm run lint`, `cd website && npm run typecheck`, `cd website && npm run build`, full root `npm audit`, full website `npm audit`, and `npm run build:native-bundle`.
+- Failed / learned: Website typecheck was previously a no-op prompt because `@astrojs/check` was missing; installing it exposed dev-audit findings that needed explicit overrides before the full website audit was clean.
+- Blockers: Docker Desktop remained unreliable after restart attempts, so this pass still does not include a second successful public-installer Linux Docker run.
+- Next: Push the RPC/website verification commit and keep future Docker/public-installer validation separate from repo correctness unless Docker is stable.
+
+### 2026-04-12 09:32 PDT — pi-0.66.1-upgrade-pass
+
+- Objective: Update Feynman from Pi `0.64.0` to the current `0.66.1` packages and absorb any downstream SDK/runtime compatibility changes instead of leaving the repo pinned behind upstream.
+- Changed: Bumped `@mariozechner/pi-ai` and `@mariozechner/pi-coding-agent` to `0.66.1` plus `@companion-ai/alpha-hub` to `0.1.3` in `package.json` and `package-lock.json`; updated `extensions/research-tools.ts` to stop listening for the removed `session_switch` extension event and rely on `session_start`, which now carries startup/reload/new/resume/fork reasons in Pi `0.66.x`.
+- Verified: Ran `npm test`, `npm run typecheck`, and `npm run build` successfully after the upgrade; smoke-ran `node bin/feynman.js --version`, `node bin/feynman.js doctor`, and `node bin/feynman.js status` successfully; checked upstream package diffs and confirmed the breaking change that affected this repo was the typed extension lifecycle change in `pi-coding-agent`, while `pi-ai` mainly brought refreshed provider/model catalog code including Bedrock/OpenAI provider updates and new generated model entries.
+- Failed / learned: `ctx7` resolved Pi correctly to `/badlogic/pi-mono`, but its docs snapshot was not release-note oriented; the concrete downstream-impact analysis came from the actual `0.64.0` → `0.66.1` package diffs and local validation, not from prose docs alone.
+- Failed / learned: The first post-upgrade CLI smoke test failed before Feynman startup because `@companion-ai/alpha-hub@0.1.2` shipped a zero-byte `src/lib/auth.js`; bumping to `0.1.3` fixed that adjacent runtime blocker.
+- Blockers: `npm install` reports two high-severity vulnerabilities remain in the dependency tree; this pass focused on the Pi upgrade and did not remediate unrelated audit findings.
+- Next: Push the Pi upgrade, then decide whether to layer the pending model-command fixes on top of this branch or land them separately to keep the dependency bump easy to review.
+
+### 2026-04-12 13:00 PDT — model-command-and-bedrock-fix-pass
+
+- Objective: Finish the remaining user-facing model-management regressions instead of stopping at the Pi dependency bump.
+- Changed: Updated `src/model/commands.ts` so `feynman model login <provider>` resolves both OAuth and API-key providers; `feynman model logout <provider>` clears either auth mode; `feynman model set` accepts both `provider/model` and `provider:model`; ambiguous bare model IDs now prefer explicitly configured providers from auth storage; added an `amazon-bedrock` setup path that validates the AWS credential chain with the AWS SDK and stores Pi's `<authenticated>` sentinel so Bedrock models appear in `model list`; synced `src/cli.ts`, `metadata/commands.mjs`, `README.md`, and the website docs to the new behavior.
+- Verified: Added regression tests in `tests/model-harness.test.ts` for `provider:model`, API-key provider resolution, and ambiguous bare-ID handling; ran `npm test`, `npm run typecheck`, `npm run build`, and `cd website && npm run build`; exercised command-level flows against throwaway `FEYNMAN_HOME` directories: interactive `node bin/feynman.js model login google`, `node bin/feynman.js model set google:gemini-3-pro-preview`, `node bin/feynman.js model set gpt-5.4` with only OpenAI configured, and `node bin/feynman.js model login amazon-bedrock`; confirmed `model list` shows Bedrock models after the new setup path; ran a live one-shot prompt `node bin/feynman.js --prompt "Reply with exactly OK"` and got `OK`.
+- Failed / learned: The website build still emits duplicate-id warnings for a handful of docs pages, but it completes successfully; those warnings predate this pass and were not introduced by the model-command edits.
+- Blockers: The Bedrock path is verified with the current shell's AWS credential chain, not with a fresh machine lacking AWS config; broader upstream Pi behavior around IMDS/default-profile autodiscovery without the sentinel is still outside this repo.
+- Next: Commit and push the combined Pi/model/docs maintenance branch, then decide whether to tackle the deeper search/deepresearch hang issues separately or leave them for focused repro work.
+
+### 2026-04-12 13:35 PDT — workflow-unattended-and-search-curator-fix-pass
+
+- Objective: Fix the remaining workflow deadlocks instead of leaving `deepresearch` and terminal web search half-functional after the maintenance push.
+- Changed: Updated the built-in research workflow prompts (`deepresearch`, `lit`, `review`, `audit`, `compare`, `draft`, `watch`) so they present the plan and continue automatically rather than blocking for approval; extended the `pi-web-access` runtime patch so Feynman rewrites its default workflow from browser-based `summary-review` to `none`; added explicit `workflow: "none"` persistence in `src/search/commands.ts` and `src/pi/web-access.ts`, plus surfaced the workflow in doctor/status-style output.
+- Verified: Reproduced the original `deepresearch` failure mode in print mode, where the run created `outputs/.plans/capital-france.md` and then stopped waiting for user confirmation; after the prompt changes, reran `deepresearch "What is the capital of France?"` and confirmed it progressed beyond planning and produced `outputs/.drafts/capital-france-draft.md`; inspected `pi-web-access@0.10.6` and confirmed the exact `waiting for summary approval...` string and `summary-review` default live in that package; added regression tests for the new `pi-web-access` patch and workflow-none status handling; reran `npm test`, `npm run typecheck`, and `npm run build`; smoke-tested `feynman search set exa exa_test_key` under a throwaway `FEYNMAN_HOME` and confirmed it writes `"workflow": "none"` to `web-search.json`.
+- Failed / learned: The long-running deepresearch session still spends substantial time in later reasoning/writing steps for even a narrow query, but the plan-confirmation deadlock itself is resolved; the remaining slowness is model/workflow behavior, not the original stop-after-plan bug.
+- Blockers: I did not install and execute the full optional `pi-session-search` package locally, so the terminal `summary approval` fix is validated by source inspection plus the Feynman patch path and config persistence rather than a local end-to-end package install.
+- Next: Commit and push the workflow/search fix pass, then close or answer the remaining deepresearch/search issues with the specific root causes and shipped fixes.
+
+### 2026-04-12 14:05 PDT — final-artifact-hardening-pass
+
+- Objective: Reduce the chance of unattended research workflows stopping at intermediate artifacts like `<slug>-brief.md` without promoting the final deliverable and provenance sidecar.
+- Changed: Tightened `prompts/deepresearch.md` so the agent must verify on disk that the plan, draft, cited brief, promoted final output, and provenance sidecar all exist before stopping; tightened `prompts/lit.md` so it explicitly checks for the final output plus provenance sidecar instead of stopping at an intermediate cited draft.
+- Verified: Cross-read the current deepresearch/lit deliver steps after the earlier unattended-run reproductions and confirmed the missing enforcement point was the final on-disk artifact check, not the naming convention itself.
+- Failed / learned: This is still prompt-level enforcement rather than a deterministic post-processing hook, so it improves completion reliability but does not provide the same guarantees as a dedicated artifact-finalization wrapper.
+- Blockers: I did not rerun a full broad deepresearch workflow end-to-end after this prompt-only hardening because those runs are materially longer and more expensive than the narrow reproductions already used to isolate the earlier deadlocks.
+- Next: Commit and push the prompt hardening, then, if needed, add a deterministic wrapper around final artifact promotion instead of relying only on prompt adherence.
+
+### 2026-04-14 09:30 PDT — wsl-login-and-uninstall-docs-pass
+
+- Objective: Fix the remaining WSL setup blocker and close the last actionable support issue instead of leaving the tracker open after the earlier workflow/model fixes.
+- Changed: Added a dedicated alpha-hub auth patch helper and tests; extended the alphaXiv login patch so WSL uses `wslview` when available and falls back to `cmd.exe /c start`, while also printing the auth URL explicitly for manual copy/paste if browser launch still fails; documented standalone uninstall steps in `README.md` and `website/src/content/docs/getting-started/installation.md`.
+- Verified: Added regression tests for the alpha-hub auth patch, reran `npm test`, `npm run typecheck`, and `npm run build`, and smoke-checked the patched alpha-hub source rewrite to confirm it injects both the WSL browser path and the explicit auth URL logging.
+- Failed / learned: This repo can patch alpha-hub's login UX reliably, but it still does not ship a destructive `feynman uninstall` command; the practical fix for the support issue is documented uninstall steps rather than a rushed cross-platform remover.
+- Blockers: I did not run a true WSL shell here, so the WSL fix is validated by the deterministic source patch plus tests rather than an actual Windows-hosted browser-launch repro.
+- Next: Push the WSL/login pass and close the stale issues and PRs that are already superseded by `main`.
+
+### 2026-04-14 09:35 PDT — review-findings-and-audit-cleanup
+
+- Objective: Fix the remaining concrete issues found in the deeper review pass instead of stopping at tracker cleanup.
+- Changed: Updated the `pi-web-access` patch so Feynman defaults search workflow to `none` without disabling explicit `summary-review`; softened the research workflow prompts so only unattended/one-shot runs auto-continue while interactive users still get a chance to request plan changes; corrected uninstall docs to mention `~/.ahub` alongside `~/.feynman`; bumped the root `basic-ftp` override from `5.2.1` to `5.2.2`.
+- Verified: Ran `npm test`, `npm run typecheck`, `npm run build`, `cd website && npm run build`, and `npm audit`; root audit is now clean.
+- Failed / learned: Astro still emits a duplicate-content-id warning for `website/src/content/docs/getting-started/installation.md`, but the website build succeeds and I did not identify a low-risk repo-side fix for that warning in this pass.
+- Blockers: The duplicate-id warning remains as a build warning only, not a failing correctness gate.
+- Next: If desired, isolate the Astro duplicate-id warning separately with a minimal reproduction rather than mixing it into runtime/CLI maintenance.
+
+### 2026-04-14 10:55 PDT — summarize-workflow-restore
+
+- Objective: Restore the useful summarization workflow that had been closed in PR `#69` without being merged.
+- Changed: Added `prompts/summarize.md` as a top-level CLI workflow so `feynman summarize <source>` is available again; kept the RLM-based tiering approach from the original proposal and aligned Tier 3 confirmation behavior with the repo's unattended-run conventions.
+- Verified: Confirmed `feynman summarize <source>` appears in CLI help; ran `node bin/feynman.js summarize /tmp/feynman-summary-smoke.txt` against a local smoke file and verified it produced `outputs/feynman-summary-smoke-summary.md` plus the raw fetched note artifact under `outputs/.notes/`.
+- Failed / learned: None in the restored Tier 1 path; broader Tier 2/Tier 3 behavior still depends on runtime/model/tool availability, just like the other prompt-driven workflows.
+- Blockers: None for the prompt restoration itself.
+- Next: If desired, add dedicated docs for `summarize` and decide whether to reopen PR `#69` for historical continuity or leave it closed as superseded by the landed equivalent on `main`.
+
+### 2026-04-12 13:20 PDT — capital-france (citation verification brief)
+
+- Objective: Verify citations in the capital-of-France draft and produce a cited verifier brief.
+- Changed: Read `outputs/.drafts/capital-france-draft.md`, `notes/capital-france-research-web.md`, and `notes/capital-france-legal-context.md`; fetched the three draft URLs directly; wrote `notes/capital-france-brief.md` with inline numbered citations and a numbered direct-URL sources list.
+- Verified: Confirmed the Insee, Sénat, and Élysée URLs were reachable on 2026-04-12; confirmed Insee and Sénat support the core claim that Paris is the capital of France; marked the Élysée homepage as contextual-only support.
+- Failed / learned: The Élysée homepage does not explicitly state the core claim, so it should not be used as sole evidence for capital status.
+- Blockers: None for the verifier brief; any stronger legal memo would still need a more direct constitutional/statutory basis if that specific question is asked.
+- Next: Promote the brief into the final output or downgrade/remove any claim that leans on the Élysée URL alone.

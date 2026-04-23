@@ -5,7 +5,7 @@ description: Set up a recurring research watch on a topic, company, paper area, 
 
 # Watch
 
-Run the `/watch` workflow. Read the prompt template at `prompts/watch.md` for the full procedure.
+Run the `/watch` workflow. The slash command expands the full workflow instructions in the active session; do not try to read a relative prompt-template path from the installed skill directory.
 
 Agents used: `researcher`
 

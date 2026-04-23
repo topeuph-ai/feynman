@@ -1,11 +1,11 @@
 {
   "name": "@companion-ai/feynman",
-  "version": "0.2.16",
+  "version": "0.2.40",
   "description": "Research-first CLI agent built on Pi and alphaXiv",
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=20.19.0 <25"
   },
   "bin": {
     "feynman": "bin/feynman.js"
@@ -19,15 +19,24 @@
     ".feynman/settings.json",
     ".feynman/SYSTEM.md",
     ".feynman/themes/",
-    ".feynman/vendor-overrides/",
     "extensions/",
     "prompts/",
     "logo.mjs",
     "logo.d.mts",
-    "scripts/",
+    "scripts/build-native-bundle.mjs",
+    "scripts/check-node-version.mjs",
+    "scripts/clean-publish-artifacts.mjs",
+    "scripts/extract-release-notes.mjs",
+    "scripts/install/",
+    "scripts/lib/",
+    "scripts/patch-embedded-pi.mjs",
+    "scripts/prepare-runtime-workspace.mjs",
+    "scripts/prune-runtime-deps.mjs",
+    "scripts/sync-website-installers.mjs",
     "skills/",
     "AGENTS.md",
     "CONTRIBUTING.md",
+    "RELEASES.md",
     "README.md",
     ".env.example"
   ],
@@ -60,14 +69,38 @@
     ]
   },
   "dependencies": {
-    "@companion-ai/alpha-hub": "^0.1.2",
-    "@mariozechner/pi-ai": "^0.64.0",
-    "@mariozechner/pi-coding-agent": "^0.64.0",
-    "@sinclair/typebox": "^0.34.48",
-    "dotenv": "^17.3.1"
+    "@clack/prompts": "^1.2.0",
+    "@companion-ai/alpha-hub": "^0.1.3",
+    "@mariozechner/pi-ai": "^0.67.6",
+    "@mariozechner/pi-coding-agent": "^0.67.6",
+    "@sinclair/typebox": "^0.34.49",
+    "dotenv": "^17.4.2"
+  },
+  "overrides": {
+    "basic-ftp": "5.3.0",
+    "@modelcontextprotocol/sdk": {
+      "@hono/node-server": "1.19.14",
+      "hono": "4.12.14"
+    },
+    "express": {
+      "router": {
+        "path-to-regexp": "8.4.2"
+      }
+    },
+    "proxy-agent": {
+      "pac-proxy-agent": {
+        "get-uri": {
+          "basic-ftp": "5.3.0"
+        }
+      }
+    },
+    "protobufjs": "7.5.5",
+    "minimatch": {
+      "brace-expansion": "5.0.5"
+    }
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },

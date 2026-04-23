@@ -28,7 +28,7 @@ Feynman supports multiple model providers. The setup wizard presents a list of a
   google:gemini-2.5-pro
 ```
 
-The model you choose here becomes the default for all sessions. You can override it per-session with the `--model` flag or change it later via `feynman model set <provider:model>`.
+The model you choose here becomes the default for all sessions. You can override it per-session with the `--model` flag or change it later via `feynman model set <provider/model>` or `feynman model set <provider:model>`.
 
 ## Stage 2: Authentication
 
@@ -42,13 +42,80 @@ For API key providers, you are prompted to paste your key directly:
 
 Keys are encrypted at rest and never sent anywhere except the provider's API endpoint.
 
+### Amazon Bedrock
+
+For Amazon Bedrock, choose:
+
+```text
+Amazon Bedrock (AWS credential chain)
+```
+
+Feynman verifies the same AWS credential chain Pi uses at runtime, including `AWS_PROFILE`, `~/.aws` credentials/config, SSO, ECS/IRSA, and EC2 instance roles. Once that check passes, Bedrock models become available in `feynman model list` without needing a traditional API key.
+
+### Local models: LM Studio, LiteLLM, Ollama, vLLM
+
+If you want to use LM Studio, start the LM Studio local server, load a model, choose the API-key flow, and then select:
+
+```text
+LM Studio (local OpenAI-compatible server)
+```
+
+The default settings are:
+
+```text
+Base URL: http://localhost:1234/v1
+Authorization header: No
+API key: lm-studio
+```
+
+Feynman attempts to read LM Studio's `/models` endpoint and prefill the loaded model id.
+
+For LiteLLM, start the proxy, choose the API-key flow, and then select:
+
+```text
+LiteLLM Proxy (OpenAI-compatible gateway)
+```
+
+The default settings are:
+
+```text
+Base URL: http://localhost:4000/v1
+API mode: openai-completions
+Master key: optional, read from LITELLM_MASTER_KEY
+```
+
+Feynman attempts to read LiteLLM's `/models` endpoint and prefill model ids from the proxy config.
+
+For Ollama, vLLM, or another OpenAI-compatible local server, choose:
+
+```text
+Custom provider (baseUrl + API key)
+```
+
+For Ollama, the typical settings are:
+
+```text
+API mode: openai-completions
+Base URL: http://localhost:11434/v1
+Authorization header: No
+Model ids: llama3.1:8b
+API key: local
+```
+
+After saving the provider, run:
+
+```bash
+feynman model list
+feynman model set <provider>/<model-id>
+```
+
+to confirm the local model is available and make it the default.
+
 ## Stage 3: Optional packages
 
-Feynman's core ships with the essentials, but some features require additional packages. The wizard asks if you want to install optional presets:
+Feynman's core ships with the essentials, including memory and session search. On platforms with supported optional presets, the wizard can offer extras:
 
-- **session-search** -- Enables searching prior session transcripts for past research
-- **memory** -- Automatic preference and correction memory across sessions
-- **generative-ui** -- Interactive HTML-style widgets for rich output
+- **generative-ui** -- Interactive HTML-style widgets for rich output on macOS
 
 You can skip this step and install packages later with `feynman packages install <preset>`.
 

@@ -4,7 +4,7 @@ import { exec as execCallback } from "node:child_process";
 import { promisify } from "node:util";
 
 import { readJson } from "../pi/settings.js";
-import { promptChoice, promptText } from "../setup/prompts.js";
+import { promptChoice, promptSelect, promptText, type PromptSelectOption } from "../setup/prompts.js";
 import { openUrl } from "../system/open-url.js";
 import { printInfo, printSection, printSuccess, printWarning } from "../ui/terminal.js";
 import {
@@ -55,13 +55,22 @@ async function selectOAuthProvider(authPath: string, action: "login" | "logout")
 		return providers[0];
 	}
 
-	const choices = providers.map((provider) => `${provider.id} — ${provider.name ?? provider.id}`);
-	choices.push("Cancel");
-	const selection = await promptChoice(`Choose an OAuth provider to ${action}:`, choices, 0);
-	if (selection >= providers.length) {
+	const selection = await promptSelect<OAuthProviderInfo | "cancel">(
+		`Choose an OAuth provider to ${action}:`,
+		[
+			...providers.map((provider) => ({
+				value: provider,
+				label: provider.name ?? provider.id,
+				hint: provider.id,
+			})),
+			{ value: "cancel", label: "Cancel" },
+		],
+		providers[0],
+	);
+	if (selection === "cancel") {
 		return undefined;
 	}
-	return providers[selection];
+	return selection;
 }
 
 type ApiKeyProviderInfo = {
@@ -71,10 +80,13 @@ type ApiKeyProviderInfo = {
 };
 
 const API_KEY_PROVIDERS: ApiKeyProviderInfo[] = [
-	{ id: "__custom__", label: "Custom provider (baseUrl + API key)" },
 	{ id: "openai", label: "OpenAI Platform API", envVar: "OPENAI_API_KEY" },
 	{ id: "anthropic", label: "Anthropic API", envVar: "ANTHROPIC_API_KEY" },
 	{ id: "google", label: "Google Gemini API", envVar: "GEMINI_API_KEY" },
+	{ id: "lm-studio", label: "LM Studio (local OpenAI-compatible server)" },
+	{ id: "litellm", label: "LiteLLM Proxy (OpenAI-compatible gateway)" },
+	{ id: "__custom__", label: "Custom provider (local/self-hosted/proxy)" },
+	{ id: "amazon-bedrock", label: "Amazon Bedrock (AWS credential chain)" },
 	{ id: "openrouter", label: "OpenRouter", envVar: "OPENROUTER_API_KEY" },
 	{ id: "zai", label: "Z.AI / GLM", envVar: "ZAI_API_KEY" },
 	{ id: "kimi-coding", label: "Kimi / Moonshot", envVar: "KIMI_API_KEY" },
@@ -91,16 +103,58 @@ const API_KEY_PROVIDERS: ApiKeyProviderInfo[] = [
 	{ id: "azure-openai-responses", label: "Azure OpenAI (Responses)", envVar: "AZURE_OPENAI_API_KEY" },
 ];
 
-async function selectApiKeyProvider(): Promise<ApiKeyProviderInfo | undefined> {
-	const choices = API_KEY_PROVIDERS.map(
-		(provider) => `${provider.id} — ${provider.label}${provider.envVar ? ` (${provider.envVar})` : ""}`,
-	);
-	choices.push("Cancel");
-	const selection = await promptChoice("Choose an API-key provider:", choices, 0);
-	if (selection >= API_KEY_PROVIDERS.length) {
+function resolveApiKeyProvider(input: string): ApiKeyProviderInfo | undefined {
+	const normalizedInput = normalizeProviderId(input);
+	if (!normalizedInput) {
 		return undefined;
 	}
-	return API_KEY_PROVIDERS[selection];
+	return API_KEY_PROVIDERS.find((provider) => provider.id === normalizedInput);
+}
+
+export function resolveModelProviderForCommand(
+	authPath: string,
+	input: string,
+): { kind: "oauth" | "api-key"; id: string } | undefined {
+	const oauthProvider = resolveOAuthProvider(authPath, input);
+	if (oauthProvider) {
+		return { kind: "oauth", id: oauthProvider.id };
+	}
+
+	const apiKeyProvider = resolveApiKeyProvider(input);
+	if (apiKeyProvider) {
+		return { kind: "api-key", id: apiKeyProvider.id };
+	}
+
+	return undefined;
+}
+
+function apiKeyProviderHint(provider: ApiKeyProviderInfo): string {
+	if (provider.id === "__custom__") {
+		return "Ollama, vLLM, LM Studio, proxies";
+	}
+	if (provider.id === "lm-studio") {
+		return "http://localhost:1234/v1";
+	}
+	if (provider.id === "litellm") {
+		return "http://localhost:4000/v1";
+	}
+	return provider.envVar ?? provider.id;
+}
+
+async function selectApiKeyProvider(): Promise<ApiKeyProviderInfo | undefined> {
+	const options: PromptSelectOption<ApiKeyProviderInfo | "cancel">[] = API_KEY_PROVIDERS.map((provider) => ({
+		value: provider,
+		label: provider.label,
+		hint: apiKeyProviderHint(provider),
+	}));
+	options.push({ value: "cancel", label: "Cancel" });
+
+	const defaultProvider = API_KEY_PROVIDERS.find((provider) => provider.id === "openai") ?? API_KEY_PROVIDERS[0];
+	const selection = await promptSelect("Choose an API-key provider:", options, defaultProvider);
+	if (selection === "cancel") {
+		return undefined;
+	}
+	return selection;
 }
 
 type CustomProviderSetup = {
@@ -321,6 +375,103 @@ async function promptCustomProviderSetup(): Promise<CustomProviderSetup | undefi
 	return { providerId, modelIds, baseUrl, api, apiKeyConfig, authHeader };
 }
 
+async function promptLmStudioProviderSetup(): Promise<CustomProviderSetup | undefined> {
+	printSection("LM Studio");
+	printInfo("Start the LM Studio local server first, then load a model.");
+
+	const baseUrlRaw = await promptText("Base URL", "http://localhost:1234/v1");
+	const { baseUrl } = normalizeCustomProviderBaseUrl("openai-completions", baseUrlRaw);
+	if (!baseUrl) {
+		printWarning("Base URL is required.");
+		return undefined;
+	}
+
+	const detectedModelIds = await bestEffortFetchOpenAiModelIds(baseUrl, "lm-studio", false);
+	let modelIdsDefault = "local-model";
+	if (detectedModelIds && detectedModelIds.length > 0) {
+		const sample = detectedModelIds.slice(0, 10).join(", ");
+		printInfo(`Detected LM Studio models: ${sample}${detectedModelIds.length > 10 ? ", ..." : ""}`);
+		modelIdsDefault = detectedModelIds[0]!;
+	} else {
+		printInfo("No models detected from /models. Enter the exact model id shown in LM Studio.");
+	}
+
+	const modelIdsRaw = await promptText("Model id(s) (comma-separated)", modelIdsDefault);
+	const modelIds = normalizeModelIds(modelIdsRaw);
+	if (modelIds.length === 0) {
+		printWarning("At least one model id is required.");
+		return undefined;
+	}
+
+	return {
+		providerId: "lm-studio",
+		modelIds,
+		baseUrl,
+		api: "openai-completions",
+		apiKeyConfig: "lm-studio",
+		authHeader: false,
+	};
+}
+
+async function promptLiteLlmProviderSetup(): Promise<CustomProviderSetup | undefined> {
+	printSection("LiteLLM Proxy");
+	printInfo("Start the LiteLLM proxy first. Feynman uses the OpenAI-compatible chat-completions API.");
+
+	const baseUrlRaw = await promptText("Base URL", "http://localhost:4000/v1");
+	const { baseUrl } = normalizeCustomProviderBaseUrl("openai-completions", baseUrlRaw);
+	if (!baseUrl) {
+		printWarning("Base URL is required.");
+		return undefined;
+	}
+
+	const keyChoices = [
+		"Yes (use LITELLM_MASTER_KEY and send Authorization: Bearer <key>)",
+		"No (proxy runs without authentication)",
+		"Cancel",
+	];
+	const keySelection = await promptChoice("Is the proxy protected by a master key?", keyChoices, 0);
+	if (keySelection >= 2) {
+		return undefined;
+	}
+
+	const hasKey = keySelection === 0;
+	const apiKeyConfig = hasKey ? "LITELLM_MASTER_KEY" : "local";
+	const authHeader = hasKey;
+	if (hasKey) {
+		printInfo("Set LITELLM_MASTER_KEY in your shell or .env before using Feynman.");
+	}
+
+	const resolvedKey = hasKey ? await resolveApiKeyConfig(apiKeyConfig) : apiKeyConfig;
+	const detectedModelIds = resolvedKey
+		? await bestEffortFetchOpenAiModelIds(baseUrl, resolvedKey, authHeader)
+		: undefined;
+
+	let modelIdsDefault = "gpt-4";
+	if (detectedModelIds && detectedModelIds.length > 0) {
+		const sample = detectedModelIds.slice(0, 10).join(", ");
+		printInfo(`Detected LiteLLM models: ${sample}${detectedModelIds.length > 10 ? ", ..." : ""}`);
+		modelIdsDefault = detectedModelIds[0]!;
+	} else {
+		printInfo("No models detected from /models. Enter the model id(s) from your LiteLLM config.");
+	}
+
+	const modelIdsRaw = await promptText("Model id(s) (comma-separated)", modelIdsDefault);
+	const modelIds = normalizeModelIds(modelIdsRaw);
+	if (modelIds.length === 0) {
+		printWarning("At least one model id is required.");
+		return undefined;
+	}
+
+	return {
+		providerId: "litellm",
+		modelIds,
+		baseUrl,
+		api: "openai-completions",
+		apiKeyConfig,
+		authHeader,
+	};
+}
+
 async function verifyCustomProvider(setup: CustomProviderSetup, authPath: string): Promise<void> {
 	const registry = createModelRegistry(authPath);
 	const modelsError = registry.getError();
@@ -447,11 +598,114 @@ async function verifyCustomProvider(setup: CustomProviderSetup, authPath: string
 	printInfo("Verification: skipped network probe for this API mode.");
 }
 
-async function configureApiKeyProvider(authPath: string): Promise<boolean> {
-	const provider = await selectApiKeyProvider();
+async function verifyBedrockCredentialChain(): Promise<void> {
+	const { defaultProvider } = await import("@aws-sdk/credential-provider-node");
+	const credentials = await defaultProvider({})();
+	if (!credentials?.accessKeyId || !credentials?.secretAccessKey) {
+		throw new Error("AWS credential chain resolved without usable Bedrock credentials.");
+	}
+}
+
+async function configureBedrockProvider(authPath: string): Promise<boolean> {
+	printSection("AWS Credentials: Amazon Bedrock");
+	printInfo("Feynman will verify the AWS SDK credential chain used by Pi's Bedrock provider.");
+	printInfo("Supported sources include AWS_PROFILE, ~/.aws credentials/config, SSO, ECS/IRSA, and EC2 instance roles.");
+
+	try {
+		await verifyBedrockCredentialChain();
+		AuthStorage.create(authPath).set("amazon-bedrock", { type: "api_key", key: "<authenticated>" });
+		printSuccess("Verified AWS credential chain and marked Amazon Bedrock as configured.");
+		printInfo("Use `feynman model list` to see available Bedrock models.");
+		return true;
+	} catch (error) {
+		printWarning(`AWS credential verification failed: ${error instanceof Error ? error.message : String(error)}`);
+		printInfo("Configure AWS credentials first, for example:");
+		printInfo("  export AWS_PROFILE=default");
+		printInfo("  # or set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY");
+		printInfo("  # or use an EC2/ECS/IRSA role with valid Bedrock access");
+		return false;
+	}
+}
+
+function maybeSetRecommendedDefaultModel(settingsPath: string | undefined, authPath: string): void {
+	if (!settingsPath) {
+		return;
+	}
+
+	const currentSpec = getCurrentModelSpec(settingsPath);
+	const available = getAvailableModelRecords(authPath);
+	const currentValid = currentSpec ? available.some((m) => `${m.provider}/${m.id}` === currentSpec) : false;
+
+	if ((!currentSpec || !currentValid) && available.length > 0) {
+		const recommended = chooseRecommendedModel(authPath);
+		if (recommended) {
+			setDefaultModelSpec(settingsPath, authPath, recommended.spec);
+		}
+	}
+}
+
+async function configureApiKeyProvider(authPath: string, providerId?: string): Promise<boolean> {
+	const provider = providerId ? resolveApiKeyProvider(providerId) : await selectApiKeyProvider();
 	if (!provider) {
+		if (providerId) {
+			throw new Error(`Unknown API-key model provider: ${providerId}`);
+		}
 		printInfo("API key setup cancelled.");
 		return false;
+	}
+
+	if (provider.id === "amazon-bedrock") {
+		return configureBedrockProvider(authPath);
+	}
+
+	if (provider.id === "lm-studio") {
+		const setup = await promptLmStudioProviderSetup();
+		if (!setup) {
+			printInfo("LM Studio setup cancelled.");
+			return false;
+		}
+
+		const modelsJsonPath = getModelsJsonPath(authPath);
+		const result = upsertProviderConfig(modelsJsonPath, setup.providerId, {
+			baseUrl: setup.baseUrl,
+			apiKey: setup.apiKeyConfig,
+			api: setup.api,
+			authHeader: setup.authHeader,
+			models: setup.modelIds.map((id) => ({ id })),
+		});
+		if (!result.ok) {
+			printWarning(result.error);
+			return false;
+		}
+
+		printSuccess("Saved LM Studio provider.");
+		await verifyCustomProvider(setup, authPath);
+		return true;
+	}
+
+	if (provider.id === "litellm") {
+		const setup = await promptLiteLlmProviderSetup();
+		if (!setup) {
+			printInfo("LiteLLM setup cancelled.");
+			return false;
+		}
+
+		const modelsJsonPath = getModelsJsonPath(authPath);
+		const result = upsertProviderConfig(modelsJsonPath, setup.providerId, {
+			baseUrl: setup.baseUrl,
+			apiKey: setup.apiKeyConfig,
+			api: setup.api,
+			authHeader: setup.authHeader,
+			models: setup.modelIds.map((id) => ({ id })),
+		});
+		if (!result.ok) {
+			printWarning(result.error);
+			return false;
+		}
+
+		printSuccess("Saved LiteLLM provider.");
+		await verifyCustomProvider(setup, authPath);
+		return true;
 	}
 
 	if (provider.id === "__custom__") {
@@ -512,7 +766,7 @@ async function configureApiKeyProvider(authPath: string): Promise<boolean> {
 }
 
 function resolveAvailableModelSpec(authPath: string, input: string): string | undefined {
-	const normalizedInput = input.trim().toLowerCase();
+	const normalizedInput = input.trim().replace(/^([^/:]+):(.+)$/, "$1/$2").toLowerCase();
 	if (!normalizedInput) {
 		return undefined;
 	}
@@ -526,6 +780,17 @@ function resolveAvailableModelSpec(authPath: string, input: string): string | un
 	const exactIdMatches = available.filter((model) => model.id.toLowerCase() === normalizedInput);
 	if (exactIdMatches.length === 1) {
 		return `${exactIdMatches[0]!.provider}/${exactIdMatches[0]!.id}`;
+	}
+
+	// When multiple providers expose the same bare model ID, prefer providers the
+	// user explicitly configured in auth storage.
+	if (exactIdMatches.length > 1) {
+		const authData = readJson(authPath) as Record<string, unknown>;
+		const configuredProviders = new Set(Object.keys(authData));
+		const configuredMatches = exactIdMatches.filter((model) => configuredProviders.has(model.provider));
+		if (configuredMatches.length === 1) {
+			return `${configuredMatches[0]!.provider}/${configuredMatches[0]!.id}`;
+		}
 	}
 
 	return undefined;
@@ -566,30 +831,22 @@ export function printModelList(settingsPath: string, authPath: string): void {
 
 export async function authenticateModelProvider(authPath: string, settingsPath?: string): Promise<boolean> {
 	const choices = [
-		"API key (OpenAI, Anthropic, Google, custom provider, ...)",
-		"OAuth login (ChatGPT Plus/Pro, Claude Pro/Max, Copilot, ...)",
+		"OAuth login (recommended: ChatGPT Plus/Pro, Claude Pro/Max, Copilot, ...)",
+		"API key or custom provider (OpenAI, Anthropic, Google, local/self-hosted, ...)",
 		"Cancel",
 	];
 	const selection = await promptChoice("How do you want to authenticate?", choices, 0);
 
 	if (selection === 0) {
-		const configured = await configureApiKeyProvider(authPath);
-		if (configured && settingsPath) {
-			const currentSpec = getCurrentModelSpec(settingsPath);
-			const available = getAvailableModelRecords(authPath);
-			const currentValid = currentSpec ? available.some((m) => `${m.provider}/${m.id}` === currentSpec) : false;
-			if ((!currentSpec || !currentValid) && available.length > 0) {
-				const recommended = chooseRecommendedModel(authPath);
-				if (recommended) {
-					setDefaultModelSpec(settingsPath, authPath, recommended.spec);
-				}
-			}
-		}
-		return configured;
+		return loginModelProvider(authPath, undefined, settingsPath);
 	}
 
 	if (selection === 1) {
-		return loginModelProvider(authPath, undefined, settingsPath);
+		const configured = await configureApiKeyProvider(authPath);
+		if (configured) {
+			maybeSetRecommendedDefaultModel(settingsPath, authPath);
+		}
+		return configured;
 	}
 
 	printInfo("Authentication cancelled.");
@@ -597,10 +854,24 @@ export async function authenticateModelProvider(authPath: string, settingsPath?:
 }
 
 export async function loginModelProvider(authPath: string, providerId?: string, settingsPath?: string): Promise<boolean> {
+	if (providerId) {
+		const resolvedProvider = resolveModelProviderForCommand(authPath, providerId);
+		if (!resolvedProvider) {
+			throw new Error(`Unknown model provider: ${providerId}`);
+		}
+		if (resolvedProvider.kind === "api-key") {
+			const configured = await configureApiKeyProvider(authPath, resolvedProvider.id);
+			if (configured) {
+				maybeSetRecommendedDefaultModel(settingsPath, authPath);
+			}
+			return configured;
+		}
+	}
+
 	const provider = providerId ? resolveOAuthProvider(authPath, providerId) : await selectOAuthProvider(authPath, "login");
 	if (!provider) {
 		if (providerId) {
-			throw new Error(`Unknown OAuth model provider: ${providerId}`);
+			throw new Error(`Unknown model provider: ${providerId}`);
 		}
 		printInfo("Login cancelled.");
 		return false;
@@ -637,35 +908,38 @@ export async function loginModelProvider(authPath: string, providerId?: string, 
 
 	printSuccess(`Model provider login complete: ${provider.id}`);
 
-	if (settingsPath) {
-		const currentSpec = getCurrentModelSpec(settingsPath);
-		const available = getAvailableModelRecords(authPath);
-		const currentValid = currentSpec
-			? available.some((m) => `${m.provider}/${m.id}` === currentSpec)
-			: false;
-
-		if ((!currentSpec || !currentValid) && available.length > 0) {
-			const recommended = chooseRecommendedModel(authPath);
-			if (recommended) {
-				setDefaultModelSpec(settingsPath, authPath, recommended.spec);
-			}
-		}
-	}
+	maybeSetRecommendedDefaultModel(settingsPath, authPath);
 
 	return true;
 }
 
 export async function logoutModelProvider(authPath: string, providerId?: string): Promise<void> {
-	const provider = providerId ? resolveOAuthProvider(authPath, providerId) : await selectOAuthProvider(authPath, "logout");
-	if (!provider) {
-		if (providerId) {
-			throw new Error(`Unknown OAuth model provider: ${providerId}`);
+	const authStorage = AuthStorage.create(authPath);
+	if (providerId) {
+		const resolvedProvider = resolveModelProviderForCommand(authPath, providerId);
+		if (resolvedProvider) {
+			authStorage.logout(resolvedProvider.id);
+			printSuccess(`Model provider logout complete: ${resolvedProvider.id}`);
+			return;
 		}
+
+		const normalizedProviderId = normalizeProviderId(providerId);
+		if (authStorage.has(normalizedProviderId)) {
+			authStorage.logout(normalizedProviderId);
+			printSuccess(`Model provider logout complete: ${normalizedProviderId}`);
+			return;
+		}
+
+		throw new Error(`Unknown model provider: ${providerId}`);
+	}
+
+	const provider = await selectOAuthProvider(authPath, "logout");
+	if (!provider) {
 		printInfo("Logout cancelled.");
 		return;
 	}
 
-	AuthStorage.create(authPath).logout(provider.id);
+	authStorage.logout(provider.id);
 	printSuccess(`Model provider logout complete: ${provider.id}`);
 }
 
@@ -689,20 +963,20 @@ export async function runModelSetup(settingsPath: string, authPath: string): Pro
 
 	while (status.availableModels.length === 0) {
 		const choices = [
-			"API key (OpenAI, Anthropic, ZAI, Kimi, MiniMax, ...)",
-			"OAuth login (ChatGPT Plus/Pro, Claude Pro/Max, Copilot, ...)",
+			"OAuth login (recommended: ChatGPT Plus/Pro, Claude Pro/Max, Copilot, ...)",
+			"API key or custom provider (OpenAI, Anthropic, ZAI, Kimi, MiniMax, ...)",
 			"Cancel",
 		];
 		const selection = await promptChoice("Choose how to configure model access:", choices, 0);
 		if (selection === 0) {
-			const configured = await configureApiKeyProvider(authPath);
-			if (!configured) {
+			const loggedIn = await loginModelProvider(authPath, undefined, settingsPath);
+			if (!loggedIn) {
 				status = collectModelStatus(settingsPath, authPath);
 				continue;
 			}
 		} else if (selection === 1) {
-			const loggedIn = await loginModelProvider(authPath, undefined, settingsPath);
-			if (!loggedIn) {
+			const configured = await configureApiKeyProvider(authPath);
+			if (!configured) {
 				status = collectModelStatus(settingsPath, authPath);
 				continue;
 			}

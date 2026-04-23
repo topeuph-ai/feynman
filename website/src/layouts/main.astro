@@ -1,6 +1,7 @@
 ---
 import "@/styles/global.css"
-import { ViewTransitions } from "astro:transitions"
+import { ClientRouter } from "astro:transitions"
+import Analytics from "@vercel/analytics/astro"
 
 interface Props {
   title?: string
@@ -25,7 +26,8 @@ const {
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
-    <ViewTransitions />
+    <ClientRouter />
+    <Analytics />
     <script is:inline>
       ;(function () {
         const theme = localStorage.getItem("theme")

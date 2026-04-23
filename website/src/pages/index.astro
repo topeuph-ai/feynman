@@ -45,8 +45,7 @@ const terminalCommands = [
 
 const installCommands = [
   { label: "curl", command: "curl -fsSL https://feynman.is/install | bash" },
-  { label: "pnpm", command: "pnpm add -g @companion-ai/feynman" },
-  { label: "bun", command: "bun add -g @companion-ai/feynman" },
+  { label: "npm", command: "npm install -g @companion-ai/feynman" },
 ]
 ---
 
@@ -103,6 +102,10 @@ const installCommands = [
             GitHub
           </a>
         </div>
+
+        <p class="text-sm text-muted-foreground">
+          Use curl for the bundled runtime, or npm if you already manage Node locally.
+        </p>
 
         <p class="text-sm text-muted-foreground">
           Need just the skills? <a href="/docs/getting-started/installation" class="text-primary hover:underline">Install the skills-only bundle</a>.

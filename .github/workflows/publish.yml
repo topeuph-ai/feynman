@@ -10,67 +10,89 @@ on:
 
 jobs:
   version-check:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
-      should_publish: ${{ steps.version.outputs.should_publish }}
+      should_release: ${{ steps.version.outputs.should_release }}
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: 24.14.0
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
       - id: version
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CURRENT=$(npm view @companion-ai/feynman version 2>/dev/null || echo "0.0.0")
           LOCAL=$(node -p "require('./package.json').version")
           echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
-          if [ "$CURRENT" != "$LOCAL" ]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          PUBLISHED=$(npm view @companion-ai/feynman version 2>/dev/null || true)
+          if [ "$PUBLISHED" = "$LOCAL" ] || gh release view "v$LOCAL" >/dev/null 2>&1; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
           else
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
           fi
 
-  publish-npm:
+  verify:
     needs: version-check
-    if: needs.version-check.outputs.should_publish == 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    if: needs.version-check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: 24.14.0
-          registry-url: https://registry.npmjs.org
-      - run: npm ci --ignore-scripts
-      - run: npm run build
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
       - run: npm test
-      - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm pack
+
+  publish-npm:
+    needs:
+      - version-check
+      - verify
+    if: needs.version-check.outputs.should_release == 'true' && needs.verify.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - run: npm publish --provenance --access public
 
   build-native-bundles:
     needs: version-check
-    if: needs.version-check.outputs.should_publish == 'true'
+    if: needs.version-check.outputs.should_release == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
           - id: linux-x64
-            os: blacksmith-4vcpu-ubuntu-2404
+            os: ubuntu-latest
           - id: darwin-x64
             os: macos-15-intel
           - id: darwin-arm64
             os: macos-14
           - id: win32-x64
-            os: blacksmith-4vcpu-windows-2025
+            os: windows-latest
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: 24.14.0
+          node-version: 24
       - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm run build:native-bundle
@@ -103,16 +125,24 @@ jobs:
       - version-check
       - publish-npm
       - build-native-bundles
-    if: needs.version-check.outputs.should_publish == 'true' && needs.build-native-bundles.result == 'success' && needs.publish-npm.result == 'success'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    if: needs.version-check.outputs.should_release == 'true' && needs.publish-npm.result == 'success' && needs.build-native-bundles.result == 'success'
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
           merge-multiple: true
-      - shell: bash
+      - name: Build release notes
+        shell: bash
+        env:
+          VERSION: ${{ needs.version-check.outputs.version }}
+        run: |
+          node scripts/extract-release-notes.mjs "$VERSION" "$RUNNER_TEMP/release-notes.md"
+      - name: Create GitHub release
+        shell: bash
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -122,12 +152,12 @@ jobs:
             gh release upload "v$VERSION" release-assets/* --clobber
             gh release edit "v$VERSION" \
               --title "v$VERSION" \
-              --notes "Standalone Feynman bundles for native installation." \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
               --draft=false \
-              --target "$GITHUB_SHA"
+              --latest
           else
             gh release create "v$VERSION" release-assets/* \
               --title "v$VERSION" \
-              --notes "Standalone Feynman bundles for native installation." \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
               --target "$GITHUB_SHA"
           fi

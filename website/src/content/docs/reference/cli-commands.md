@@ -15,6 +15,7 @@ This page covers the dedicated Feynman CLI commands and flags. Workflow commands
 | `feynman chat [prompt]` | Start chat explicitly, optionally with an initial prompt |
 | `feynman help` | Show CLI help |
 | `feynman setup` | Run the guided setup wizard |
+| `feynman setup preview` | Install or verify preview dependencies |
 | `feynman doctor` | Diagnose config, auth, Pi runtime, and preview dependencies |
 | `feynman status` | Show the current setup summary (model, auth, packages) |
 
@@ -23,11 +24,11 @@ This page covers the dedicated Feynman CLI commands and flags. Workflow commands
 | Command | Description |
 | --- | --- |
 | `feynman model list` | List available models in Pi auth storage |
-| `feynman model login [id]` | Login to a Pi OAuth model provider |
-| `feynman model logout [id]` | Logout from a Pi OAuth model provider |
-| `feynman model set <provider:model>` | Set the default model for all sessions |
+| `feynman model login [id]` | Authenticate a model provider with OAuth or API-key setup |
+| `feynman model logout [id]` | Clear stored auth for a model provider |
+| `feynman model set <provider/model>` | Set the default model for all sessions |
 
-These commands manage your model provider configuration. The `model set` command updates `~/.feynman/settings.json` with the new default. The format is `provider:model-name`, for example `anthropic:claude-sonnet-4-20250514`.
+These commands manage your model provider configuration. The `model set` command updates `~/.feynman/settings.json` with the new default. It accepts either `provider/model-name` or `provider:model-name`, for example `anthropic/claude-sonnet-4-20250514` or `anthropic:claude-sonnet-4-20250514`. Running `feynman model login google` or `feynman model login amazon-bedrock` routes directly into the relevant API-key setup flow instead of requiring the interactive picker.
 
 ## AlphaXiv commands
 
@@ -47,13 +48,22 @@ AlphaXiv authentication enables Feynman to search and retrieve papers, access di
 | `feynman packages install <preset>` | Install an optional package preset |
 | `feynman update [package]` | Update installed packages, or a specific package by name |
 
-Use `feynman packages list` to see which optional packages are available and which are already installed. The `all-extras` preset installs every optional package at once.
+Use `feynman packages list` to see which optional packages are available on your platform and which are already installed. Core packages already include memory and session search. The `all-extras` preset installs every optional package available on the current platform.
 
 ## Utility commands
 
 | Command | Description |
 | --- | --- |
 | `feynman search status` | Show Pi web-access status and config path |
+
+## REPL hotkeys
+
+Inside the interactive REPL, use `/hotkeys` to show the live keyboard map. The default reasoning controls are:
+
+| Hotkey | Action |
+| --- | --- |
+| `Shift+Tab` | Cycle thinking/reasoning level |
+| `Ctrl+T` | Toggle thinking block visibility |
 
 ## Workflow commands
 
@@ -76,7 +86,7 @@ These are equivalent to launching the REPL and typing the corresponding slash co
 | Flag | Description |
 | --- | --- |
 | `--prompt "<text>"` | Run one prompt and exit (one-shot mode) |
-| `--model <provider:model>` | Force a specific model for this session |
+| `--model <provider/model|provider:model>` | Force a specific model for this session |
 | `--thinking <level>` | Set thinking level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh` |
 | `--cwd <path>` | Set the working directory for all file operations |
 | `--session-dir <path>` | Set the session storage directory |
@@ -85,4 +95,4 @@ These are equivalent to launching the REPL and typing the corresponding slash co
 | `--alpha-logout` | Clear alphaXiv auth and exit |
 | `--alpha-status` | Show alphaXiv auth status and exit |
 | `--doctor` | Alias for `feynman doctor` |
-| `--setup-preview` | Install preview dependencies (pandoc) |
+| `--setup-preview` | Alias for `feynman setup preview` |

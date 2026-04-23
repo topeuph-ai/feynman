@@ -5,7 +5,7 @@ description: Simulate a tough but constructive peer review of an AI research art
 
 # Peer Review
 
-Run the `/review` workflow. Read the prompt template at `prompts/review.md` for the full procedure.
+Run the `/review` workflow. The slash command expands the full workflow instructions in the active session; do not try to read a relative prompt-template path from the installed skill directory.
 
 Agents used: `researcher`, `reviewer`
 

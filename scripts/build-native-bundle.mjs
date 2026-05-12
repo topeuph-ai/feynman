@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 const appRoot = resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(readFileSync(resolve(appRoot, "package.json"), "utf8"));
 const packageLockPath = resolve(appRoot, "package-lock.json");
-const minBundledNodeVersion = packageJson.engines?.node?.replace(/^>=/, "").trim() || process.version.slice(1);
+const minBundledNodeVersion = packageJson.engines?.node?.match(/>=\s*([0-9]+\.[0-9]+\.[0-9]+)/)?.[1] || process.version.slice(1);
 
 function parseSemver(version) {
 	const [major = "0", minor = "0", patch = "0"] = version.split(".");
@@ -24,6 +24,10 @@ function compareSemver(left, right) {
 function fail(message) {
 	console.error(`[feynman] ${message}`);
 	process.exit(1);
+}
+
+function logStep(message) {
+	console.log(`[feynman] ${message}`);
 }
 
 function resolveBundledNodeVersion() {
@@ -97,6 +101,14 @@ function runCapture(command, args, options = {}) {
 	return result.stdout.trim();
 }
 
+function commandExists(command) {
+	const result = spawnSync(process.platform === "win32" ? "where" : "command", process.platform === "win32" ? [command] : ["-v", command], {
+		stdio: "ignore",
+		shell: process.platform !== "win32",
+	});
+	return result.status === 0;
+}
+
 function detectTarget() {
 	if (process.platform === "darwin" && process.arch === "arm64") {
 		return {
@@ -164,10 +176,12 @@ function nodeArchiveName(target) {
 }
 
 function ensureBundledWorkspace() {
+	logStep("preparing bundled runtime workspace...");
 	run(process.execPath, [resolve(appRoot, "scripts", "prepare-runtime-workspace.mjs")], { cwd: appRoot });
 }
 
 function copyPackageFiles(appDir) {
+	logStep("copying package files...");
 	const releaseDir = resolve(appRoot, "dist", "release");
 	cpSync(resolve(appRoot, "package.json"), resolve(appDir, "package.json"));
 	for (const entry of packageJson.files) {
@@ -186,6 +200,7 @@ function copyPackageFiles(appDir) {
 }
 
 function installAppDependencies(appDir, stagingRoot) {
+	logStep("installing production dependencies...");
 	const depsDir = resolve(stagingRoot, "prod-deps");
 	rmSync(depsDir, { recursive: true, force: true });
 	mkdirSync(depsDir, { recursive: true });
@@ -237,8 +252,10 @@ function installBundledNode(bundleRoot, target, stagingRoot) {
 	const archivePath = resolve(stagingRoot, archiveName);
 	const url = `https://nodejs.org/dist/v${bundledNodeVersion}/${archiveName}`;
 
+	logStep(`downloading Node.js ${bundledNodeVersion} for ${target.id}...`);
 	run("curl", ["-fsSL", url, "-o", archivePath]);
 
+	logStep("extracting bundled Node.js...");
 	const extractRoot = resolve(stagingRoot, "node-dist");
 	mkdirSync(extractRoot, { recursive: true });
 	if (archiveName.endsWith(".zip")) {
@@ -252,6 +269,7 @@ function installBundledNode(bundleRoot, target, stagingRoot) {
 }
 
 function writeLauncher(bundleRoot, target) {
+	logStep("writing launchers...");
 	if (target.launcher === "unix") {
 		const launcherPath = resolve(bundleRoot, "feynman");
 		writeFileSync(
@@ -293,10 +311,17 @@ function writeLauncher(bundleRoot, target) {
 }
 
 function validateBundle(bundleRoot, target) {
+	logStep("validating bundled native dependencies...");
 	const nodeExecutable =
 		target.launcher === "windows"
 			? resolve(bundleRoot, "node", "node.exe")
 			: resolve(bundleRoot, "node", "bin", "node");
+
+	const betterSqlitePackageJson = resolve(bundleRoot, "app", ".feynman", "npm", "node_modules", "better-sqlite3", "package.json");
+	if (!existsSync(betterSqlitePackageJson)) {
+		logStep("skipping better-sqlite3 validation; sqlite-backed packages are not bundled for this Node runtime");
+		return;
+	}
 
 	run(nodeExecutable, ["-e", "require('./app/.feynman/npm/node_modules/better-sqlite3'); console.log('better-sqlite3 ok')"], {
 		cwd: bundleRoot,
@@ -304,11 +329,18 @@ function validateBundle(bundleRoot, target) {
 }
 
 function packBundle(bundleRoot, target, outDir) {
+	logStep("packing native bundle...");
 	const archiveName = `${basename(bundleRoot)}.${target.bundleExtension}`;
 	const archivePath = resolve(outDir, archiveName);
 	rmSync(archivePath, { force: true });
 
 	if (target.bundleExtension === "zip") {
+		if (process.platform === "win32" && commandExists("7z")) {
+			run("7z", ["a", "-tzip", archivePath, basename(bundleRoot), "-mx=1", "-bb0", "-bd"], {
+				cwd: resolve(bundleRoot, ".."),
+			});
+			return archivePath;
+		}
 		if (process.platform === "win32") {
 			const bundleDir = dirname(bundleRoot).replace(/'/g, "''");
 			const bundleName = basename(bundleRoot).replace(/'/g, "''");
@@ -342,8 +374,10 @@ function main() {
 	installAppDependencies(appDir, stagingRoot);
 
 	const appFeynmanDir = resolve(appDir, ".feynman");
+	logStep("extracting runtime workspace...");
 	extractTarball(resolve(appFeynmanDir, "runtime-workspace.tgz"), appFeynmanDir, "-xzf");
 	rmSync(resolve(appFeynmanDir, "runtime-workspace.tgz"), { force: true });
+	logStep("patching embedded Pi runtime...");
 	run(process.execPath, [resolve(appDir, "scripts", "patch-embedded-pi.mjs")], { cwd: appDir });
 
 	installBundledNode(bundleRoot, target, stagingRoot);

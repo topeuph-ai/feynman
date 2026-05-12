@@ -20,7 +20,7 @@ function Normalize-Version {
 }
 
 function Resolve-LatestReleaseVersion {
-  $page = Invoke-WebRequest -Uri "https://github.com/getcompanion-ai/feynman/releases/latest"
+  $page = Invoke-WebRequest -Uri "https://github.com/companion-inc/feynman/releases/latest"
   $match = [regex]::Match($page.Content, 'releases/tag/v([0-9][^"''<>\s]*)')
   if (-not $match.Success) {
     throw "Failed to resolve the latest Feynman release version."
@@ -46,7 +46,7 @@ function Resolve-ReleaseMetadata {
 
   $bundleName = "feynman-$resolvedVersion-$AssetTarget"
   $archiveName = "$bundleName.$BundleExtension"
-  $baseUrl = if ($env:FEYNMAN_INSTALL_BASE_URL) { $env:FEYNMAN_INSTALL_BASE_URL } else { "https://github.com/getcompanion-ai/feynman/releases/download/v$resolvedVersion" }
+  $baseUrl = if ($env:FEYNMAN_INSTALL_BASE_URL) { $env:FEYNMAN_INSTALL_BASE_URL } else { "https://github.com/companion-inc/feynman/releases/download/v$resolvedVersion" }
 
   return [PSCustomObject]@{
     ResolvedVersion = $resolvedVersion

@@ -2,13 +2,14 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { patchPiAgentCoreSource } from "../../scripts/lib/pi-agent-core-patch.mjs";
+import { patchPiTuiSource } from "../../scripts/lib/pi-tui-patch.mjs";
 
-function patchFileIfPresent(path: string): boolean {
+function patchFileIfPresent(path: string, patchSource: (source: string) => string): boolean {
 	if (!existsSync(path)) {
 		return false;
 	}
 	const source = readFileSync(path, "utf8");
-	const patched = patchPiAgentCoreSource(source);
+	const patched = patchSource(source);
 	if (patched === source) {
 		return false;
 	}
@@ -17,5 +18,20 @@ function patchFileIfPresent(path: string): boolean {
 }
 
 export function patchPiRuntimeNodeModules(appRoot: string): boolean {
-	return patchFileIfPresent(resolve(appRoot, "node_modules", "@mariozechner", "pi-agent-core", "dist", "agent-loop.js"));
+	const nodeModuleRoots = [
+		resolve(appRoot, "node_modules"),
+		resolve(appRoot, ".feynman", "npm", "node_modules"),
+	];
+	let changed = false;
+	for (const nodeModulesPath of nodeModuleRoots) {
+		changed = patchFileIfPresent(
+			resolve(nodeModulesPath, "@mariozechner", "pi-agent-core", "dist", "agent-loop.js"),
+			patchPiAgentCoreSource,
+		) || changed;
+		changed = patchFileIfPresent(
+			resolve(nodeModulesPath, "@mariozechner", "pi-tui", "dist", "tui.js"),
+			patchPiTuiSource,
+		) || changed;
+	}
+	return changed;
 }

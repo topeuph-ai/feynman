@@ -1,8 +1,18 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-import { applyFeynmanPackageManagerEnv, buildPiArgs, buildPiEnv, resolvePiPaths, toNodeImportSpecifier } from "../src/pi/runtime.js";
+import {
+	applyFeynmanPackageManagerEnv,
+	buildPiArgs,
+	buildPiEnv,
+	resolvePiPaths,
+	toNodeImportSpecifier,
+	validatePiInstallation,
+} from "../src/pi/runtime.js";
 
 test("buildPiArgs includes configured runtime paths and prompt", () => {
 	const args = buildPiArgs({
@@ -49,8 +59,16 @@ test("buildPiArgs omits thinking arg when launch thinking is not explicit", () =
 test("buildPiEnv wires Feynman paths into the Pi environment", () => {
 	const previousUppercasePrefix = process.env.NPM_CONFIG_PREFIX;
 	const previousLowercasePrefix = process.env.npm_config_prefix;
+	const previousOtelServiceName = process.env.OTEL_SERVICE_NAME;
+	const previousOtelServiceVersion = process.env.OTEL_SERVICE_VERSION;
+	const previousPiOtelServiceName = process.env.PI_OTEL_SERVICE_NAME;
+	const previousPiOtelServiceVersion = process.env.PI_OTEL_SERVICE_VERSION;
 	process.env.NPM_CONFIG_PREFIX = "/tmp/global-prefix";
 	process.env.npm_config_prefix = "/tmp/global-prefix-lower";
+	delete process.env.OTEL_SERVICE_NAME;
+	delete process.env.OTEL_SERVICE_VERSION;
+	delete process.env.PI_OTEL_SERVICE_NAME;
+	delete process.env.PI_OTEL_SERVICE_VERSION;
 
 	const env = buildPiEnv({
 		appRoot: "/repo/feynman",
@@ -70,6 +88,8 @@ test("buildPiEnv wires Feynman paths into the Pi environment", () => {
 		assert.equal(env.npm_config_prefix, "/home/.feynman/npm-global");
 		assert.equal(env.FEYNMAN_CODING_AGENT_DIR, "/home/.feynman/agent");
 		assert.equal(env.PI_CODING_AGENT_DIR, "/home/.feynman/agent");
+		assert.equal(env.OTEL_SERVICE_NAME, undefined);
+		assert.equal(env.OTEL_SERVICE_VERSION, undefined);
 		assert.ok(
 			env.PATH?.startsWith(
 				"/repo/feynman/node_modules/.bin:/repo/feynman/.feynman/npm/node_modules/.bin:/home/.feynman/npm-global/bin:",
@@ -85,6 +105,26 @@ test("buildPiEnv wires Feynman paths into the Pi environment", () => {
 			delete process.env.npm_config_prefix;
 		} else {
 			process.env.npm_config_prefix = previousLowercasePrefix;
+		}
+		if (previousOtelServiceName === undefined) {
+			delete process.env.OTEL_SERVICE_NAME;
+		} else {
+			process.env.OTEL_SERVICE_NAME = previousOtelServiceName;
+		}
+		if (previousOtelServiceVersion === undefined) {
+			delete process.env.OTEL_SERVICE_VERSION;
+		} else {
+			process.env.OTEL_SERVICE_VERSION = previousOtelServiceVersion;
+		}
+		if (previousPiOtelServiceName === undefined) {
+			delete process.env.PI_OTEL_SERVICE_NAME;
+		} else {
+			process.env.PI_OTEL_SERVICE_NAME = previousPiOtelServiceName;
+		}
+		if (previousPiOtelServiceVersion === undefined) {
+			delete process.env.PI_OTEL_SERVICE_VERSION;
+		} else {
+			process.env.PI_OTEL_SERVICE_VERSION = previousPiOtelServiceVersion;
 		}
 	}
 });
@@ -146,6 +186,27 @@ test("resolvePiPaths includes the Promise.withResolvers polyfill path", () => {
 	const paths = resolvePiPaths("/repo/feynman");
 
 	assert.equal(paths.promisePolyfillPath, "/repo/feynman/dist/system/promise-polyfill.js");
+});
+
+test("resolvePiPaths falls back to the vendored runtime workspace in packed installs", () => {
+	const appRoot = mkdtempSync(join(tmpdir(), "feynman-packed-runtime-"));
+	const piDist = join(appRoot, ".feynman", "npm", "node_modules", "@mariozechner", "pi-coding-agent", "dist");
+	mkdirSync(piDist, { recursive: true });
+	writeFileSync(join(piDist, "cli.js"), "", "utf8");
+	writeFileSync(join(piDist, "main.js"), "", "utf8");
+	mkdirSync(join(appRoot, "dist", "pi"), { recursive: true });
+	mkdirSync(join(appRoot, "dist", "system"), { recursive: true });
+	mkdirSync(join(appRoot, "extensions"), { recursive: true });
+	mkdirSync(join(appRoot, "prompts"), { recursive: true });
+	writeFileSync(join(appRoot, "dist", "pi", "pi-cli-wrapper.js"), "", "utf8");
+	writeFileSync(join(appRoot, "dist", "system", "promise-polyfill.js"), "", "utf8");
+	writeFileSync(join(appRoot, "extensions", "research-tools.ts"), "", "utf8");
+
+	const paths = resolvePiPaths(appRoot);
+
+	assert.equal(paths.piPackageRoot, join(appRoot, ".feynman", "npm", "node_modules", "@mariozechner", "pi-coding-agent"));
+	assert.equal(paths.piCliPath, join(piDist, "cli.js"));
+	assert.deepEqual(validatePiInstallation(appRoot), []);
 });
 
 test("toNodeImportSpecifier converts absolute preload paths to file URLs", () => {

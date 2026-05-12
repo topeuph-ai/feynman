@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import { DefaultPackageManager, SettingsManager } from "@mariozechner/pi-coding-agent";
 
@@ -48,6 +48,23 @@ const FILTERED_INSTALL_OUTPUT_PATTERNS = [
 	/^run `npm fund` for details$/i,
 ];
 const APP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const PI_RUNTIME_PEER_PACKAGE_NAMES = [
+	"@mariozechner/pi-agent-core",
+	"@mariozechner/pi-ai",
+	"@mariozechner/pi-coding-agent",
+	"@mariozechner/pi-tui",
+	"@earendil-works/pi-agent-core",
+	"@earendil-works/pi-ai",
+	"@earendil-works/pi-coding-agent",
+	"@earendil-works/pi-tui",
+	"typebox",
+] as const;
+const FALLBACK_RUNTIME_PEER_SPECS: Partial<Record<(typeof PI_RUNTIME_PEER_PACKAGE_NAMES)[number], string>> = {
+	"@earendil-works/pi-agent-core": "@earendil-works/pi-agent-core@0.74.0",
+	"@earendil-works/pi-ai": "@earendil-works/pi-ai@0.74.0",
+	"@earendil-works/pi-coding-agent": "@earendil-works/pi-coding-agent@0.74.0",
+	"@earendil-works/pi-tui": "@earendil-works/pi-tui@0.74.0",
+};
 
 function createPackageContext(workingDir: string, agentDir: string) {
 	applyFeynmanPackageManagerEnv(agentDir);
@@ -124,6 +141,48 @@ function dedupeNpmSources(sources: string[], updateToLatest: boolean): string[] 
 	}
 
 	return [...specs.values()];
+}
+
+function parseNpmSpecName(spec: string): string {
+	const match = spec.match(/^(@?[^@]+(?:\/[^@]+)?)(?:@.+)?$/);
+	return match?.[1] ?? spec;
+}
+
+function isPiRuntimePackageName(packageName: string): boolean {
+	return packageName.startsWith("pi-") || packageName.includes("/pi-");
+}
+
+function readInstalledPackageVersion(packageRoot: string): string | undefined {
+	try {
+		const pkg = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8")) as { version?: unknown };
+		return typeof pkg.version === "string" ? pkg.version : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function resolveRuntimePeerSpec(packageName: string): string | undefined {
+	for (const packageRoot of [
+		resolve(APP_ROOT, "node_modules", packageName),
+		resolve(APP_ROOT, ".feynman", "npm", "node_modules", packageName),
+	]) {
+		const version = readInstalledPackageVersion(packageRoot);
+		if (version) return `${packageName}@${version}`;
+	}
+	return FALLBACK_RUNTIME_PEER_SPECS[packageName as (typeof PI_RUNTIME_PEER_PACKAGE_NAMES)[number]];
+}
+
+function withRuntimePeerSpecs(specs: string[]): string[] {
+	if (!specs.some((spec) => isPiRuntimePackageName(parseNpmSpecName(spec)))) {
+		return specs;
+	}
+
+	const existingPackageNames = new Set(specs.map(parseNpmSpecName));
+	const peerSpecs = PI_RUNTIME_PEER_PACKAGE_NAMES
+		.filter((packageName) => !existingPackageNames.has(packageName))
+		.map(resolveRuntimePeerSpec)
+		.filter((spec): spec is string => Boolean(spec));
+	return [...specs, ...peerSpecs];
 }
 
 function ensureProjectInstallRoot(workingDir: string): string {
@@ -210,7 +269,7 @@ async function runPackageManagerInstall(
 		args.push("--prefix", ensureProjectInstallRoot(workingDir));
 	}
 
-	args.push(...specs);
+	args.push(...withRuntimePeerSpecs(specs));
 	const suppressKnownNativeFailureOutput = process.platform === "darwin" && specs.some((spec) => spec.startsWith("pi-generative-ui"));
 
 	await new Promise<void>((resolvePromise, reject) => {
@@ -272,8 +331,16 @@ export function getMissingConfiguredPackages(
 	agentDir: string,
 	appRoot: string,
 ): MissingConfiguredPackageSummary {
-	const { packageManager } = createPackageContext(workingDir, agentDir);
-	const configured = packageManager.listConfiguredPackages();
+	let { packageManager } = createPackageContext(workingDir, agentDir);
+	let configured = packageManager.listConfiguredPackages();
+	const missingUserNpmSources = configured
+		.filter((entry) => entry.scope === "user" && !entry.installedPath && parseNpmSource(entry.source))
+		.map((entry) => entry.source);
+	const bundledSeeded = seedBundledWorkspacePackages(agentDir, appRoot, missingUserNpmSources);
+	if (bundledSeeded.length > 0) {
+		({ packageManager } = createPackageContext(workingDir, agentDir));
+		configured = packageManager.listConfiguredPackages();
+	}
 
 	return configured.reduce<MissingConfiguredPackageSummary>(
 		(summary, entry) => {
@@ -349,6 +416,7 @@ export async function updateConfiguredPackages(
 	source?: string,
 ): Promise<UpdateConfiguredPackagesResult> {
 	const { settingsManager, packageManager } = createPackageContext(workingDir, agentDir);
+	seedBundledWorkspacePackages(agentDir, APP_ROOT, []);
 
 	if (source) {
 		const parsed = parseNpmSource(source);
@@ -427,6 +495,11 @@ function pathsMatchSymlinkTarget(linkPath: string, targetPath: string): boolean 
 	}
 }
 
+function isPathInsideRoot(path: string, root: string): boolean {
+	const relativePath = relative(root, path);
+	return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
+
 function linkDirectory(linkPath: string, targetPath: string): void {
 	if (pathsMatchSymlinkTarget(linkPath, targetPath)) {
 		return;
@@ -479,6 +552,55 @@ function listBundledWorkspacePackageNames(root: string): string[] {
 	return names;
 }
 
+function removeEmptyScopeDirectory(packagePath: string, packageName: string, globalNodeModulesRoot: string): void {
+	if (!packageName.startsWith("@")) {
+		return;
+	}
+
+	const scopePath = dirname(packagePath);
+	if (!isPathInsideRoot(scopePath, globalNodeModulesRoot) || !existsSync(scopePath)) {
+		return;
+	}
+	if (readdirSync(scopePath).length > 0) {
+		return;
+	}
+
+	rmSync(scopePath, { recursive: true, force: true });
+}
+
+function pruneStaleBundledPackageLinks(
+	globalNodeModulesRoot: string,
+	bundledNodeModulesRoot: string,
+	bundledPackageNames: string[],
+): void {
+	if (!existsSync(globalNodeModulesRoot)) {
+		return;
+	}
+
+	const currentBundledPackages = new Set(bundledPackageNames);
+	for (const packageName of listBundledWorkspacePackageNames(globalNodeModulesRoot)) {
+		const packagePath = resolve(globalNodeModulesRoot, packageName);
+		let linkedTarget: string;
+		try {
+			if (!lstatSync(packagePath).isSymbolicLink()) {
+				continue;
+			}
+			linkedTarget = resolve(dirname(packagePath), readlinkSync(packagePath));
+		} catch {
+			continue;
+		}
+		if (!isPathInsideRoot(linkedTarget, bundledNodeModulesRoot)) {
+			continue;
+		}
+		if (currentBundledPackages.has(packageName) && existsSync(linkedTarget)) {
+			continue;
+		}
+
+		rmSync(packagePath, { force: true });
+		removeEmptyScopeDirectory(packagePath, packageName, globalNodeModulesRoot);
+	}
+}
+
 function packageDependencyExists(packagePath: string, globalNodeModulesRoot: string, dependency: string): boolean {
 	return existsSync(packageNameToPath(resolve(packagePath, "node_modules"), dependency)) ||
 		existsSync(packageNameToPath(globalNodeModulesRoot, dependency));
@@ -495,6 +617,15 @@ function installedPackageLooksUsable(packagePath: string, globalNodeModulesRoot:
 		};
 		const dependencies = Object.keys(pkg.dependencies ?? {});
 		return dependencies.every((dependency) => packageDependencyExists(packagePath, globalNodeModulesRoot, dependency));
+	} catch {
+		return false;
+	}
+}
+
+function packageJsonMatchesBundledCopy(packagePath: string, bundledPackagePath: string): boolean {
+	try {
+		return readFileSync(resolve(packagePath, "package.json"), "utf8") ===
+			readFileSync(resolve(bundledPackagePath, "package.json"), "utf8");
 	} catch {
 		return false;
 	}
@@ -546,8 +677,12 @@ export function seedBundledWorkspacePackages(
 	const globalNodeModulesRoot = resolve(getFeynmanNpmPrefixPath(agentDir), "lib", "node_modules");
 	const seeded: string[] = [];
 	const bundledPackageNames = listBundledWorkspacePackageNames(bundledNodeModulesRoot);
+	const newlySeededPackageNames = new Set<string>();
+	pruneStaleBundledPackageLinks(globalNodeModulesRoot, bundledNodeModulesRoot, bundledPackageNames);
 	for (const packageName of bundledPackageNames) {
-		seedBundledPackage(globalNodeModulesRoot, bundledNodeModulesRoot, packageName);
+		if (seedBundledPackage(globalNodeModulesRoot, bundledNodeModulesRoot, packageName)) {
+			newlySeededPackageNames.add(packageName);
+		}
 	}
 
 	for (const source of sources) {
@@ -557,7 +692,12 @@ export function seedBundledWorkspacePackages(
 		if (!parsed) continue;
 
 		const targetPath = resolve(globalNodeModulesRoot, parsed.name);
-		if (pathsMatchSymlinkTarget(targetPath, resolve(bundledNodeModulesRoot, parsed.name))) {
+		const bundledPackagePath = resolve(bundledNodeModulesRoot, parsed.name);
+		if (
+			newlySeededPackageNames.has(parsed.name) ||
+			pathsMatchSymlinkTarget(targetPath, bundledPackagePath) ||
+			packageJsonMatchesBundledCopy(targetPath, bundledPackagePath)
+		) {
 			seeded.push(source);
 		}
 	}

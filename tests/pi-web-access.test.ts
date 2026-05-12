@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -43,6 +43,18 @@ test("savePiWebAccessConfig merges updates and deletes undefined values", () => 
 	});
 });
 
+test("savePiWebAccessConfig restricts web-search.json permissions", { skip: process.platform === "win32" }, () => {
+	const root = mkdtempSync(join(tmpdir(), "feynman-pi-web-"));
+	const configPath = getPiWebSearchConfigPath(root);
+
+	savePiWebAccessConfig({
+		searchProvider: "exa",
+		exaApiKey: "exa_secret",
+	}, configPath);
+
+	assert.equal(statSync(configPath).mode & 0o777, 0o600);
+});
+
 test("getPiWebAccessStatus reads Pi web-access config directly", () => {
 	const root = mkdtempSync(join(tmpdir(), "feynman-pi-web-"));
 	const configPath = getPiWebSearchConfigPath(root);
@@ -67,6 +79,7 @@ test("getPiWebAccessStatus reads Pi web-access config directly", () => {
 	assert.equal(status.geminiApiConfigured, true);
 	assert.equal(status.perplexityConfigured, false);
 	assert.equal(status.chromeProfile, "Profile 2");
+	assert.equal(status.geminiBrowserEnabled, false);
 });
 
 test("getPiWebAccessStatus reads Gemini routes directly", () => {
@@ -79,6 +92,7 @@ test("getPiWebAccessStatus reads Gemini routes directly", () => {
 			provider: "gemini",
 			searchProvider: "gemini",
 			chromeProfile: "Profile 2",
+			geminiBrowser: true,
 			geminiApiKey: "AIza...",
 		}),
 		"utf8",
@@ -92,6 +106,7 @@ test("getPiWebAccessStatus reads Gemini routes directly", () => {
 	assert.equal(status.geminiApiConfigured, true);
 	assert.equal(status.perplexityConfigured, false);
 	assert.equal(status.chromeProfile, "Profile 2");
+	assert.equal(status.geminiBrowserEnabled, true);
 });
 
 test("getPiWebAccessStatus supports the legacy route key", () => {
@@ -104,6 +119,7 @@ test("getPiWebAccessStatus supports the legacy route key", () => {
 	assert.equal(status.requestProvider, "perplexity");
 	assert.equal(status.workflow, "none");
 	assert.equal(status.perplexityConfigured, true);
+	assert.equal(status.geminiBrowserEnabled, false);
 });
 
 test("formatPiWebAccessDoctorLines reports Pi-managed web access", () => {
@@ -116,6 +132,7 @@ test("formatPiWebAccessDoctorLines reports Pi-managed web access", () => {
 
 	assert.equal(lines[0], "web access: pi-web-access");
 	assert.ok(lines.some((line) => line.includes("search workflow: none")));
+	assert.ok(lines.some((line) => line.includes("gemini browser fallback: disabled")));
 	assert.ok(lines.some((line) => line.includes("/tmp/pi-web-search.json")));
 });
 

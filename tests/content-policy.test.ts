@@ -78,9 +78,13 @@ test("research workflows use real web-search tool names and grant them to eviden
 	const verifierPrompt = readFileSync(join(repoRoot, ".feynman", "agents", "verifier.md"), "utf8");
 
 	assert.match(systemPrompt, /call `web_search`/i);
-	assert.match(systemPrompt, /do not call non-existent aliases such as `google:search`/i);
+	assert.match(systemPrompt, /do not call non-existent aliases such as `search_web`/i);
 	assert.match(deepResearchPrompt, /call `web_search`/i);
-	assert.match(deepResearchPrompt, /never call `google:search`/i);
+	assert.match(deepResearchPrompt, /do not call `search_web`/i);
+	assert.match(deepResearchPrompt, /Fetch URLs with `fetch_content`/i);
+	assert.match(deepResearchPrompt, /do not call bare `fetch`/i);
+	assert.match(deepResearchPrompt, /do not invent an `alpha_search` tool/i);
+	assert.match(deepResearchPrompt, /Do not use `Task` as an agent dispatcher/i);
 
 	for (const [label, content] of [
 		["researcher prompt", researcherPrompt],
@@ -89,6 +93,18 @@ test("research workflows use real web-search tool names and grant them to eviden
 		assert.match(content, /^tools: .*web_search/m, `${label} must grant web_search`);
 		assert.match(content, /^tools: .*fetch_content/m, `${label} must grant fetch_content`);
 		assert.match(content, /^tools: .*get_search_content/m, `${label} must grant get_search_content`);
+	}
+});
+
+test("workflow prompts start with the shared tool discipline block", () => {
+	for (const fileName of readdirSync(join(repoRoot, "prompts")).filter((entry) => entry.endsWith(".md"))) {
+		const content = readFileSync(join(repoRoot, "prompts", fileName), "utf8");
+		const frontmatterEnd = content.indexOf("\n---\n", 4);
+		assert.notEqual(frontmatterEnd, -1, `${fileName} must have frontmatter`);
+		const firstBody = content.slice(frontmatterEnd + "\n---\n".length).trimStart();
+		assert.match(firstBody, /^## Tool Discipline \(Read First\)/, `${fileName} must start with tool discipline`);
+		assert.match(firstBody, /Tool names are literal/i, `${fileName} must remind the model that tool names are literal`);
+		assert.match(firstBody, /If a tool returns `Tool not found` or `Invalid URL`/i, `${fileName} must stop invalid retries`);
 	}
 });
 
@@ -125,6 +141,15 @@ test("deepresearch requires post-edit verification before claiming fixes landed"
 	assert.match(deepResearchPrompt, /If an `edit` or `write` tool call fails, do not describe the fix as applied/i);
 	assert.match(deepResearchPrompt, /Provenance may only say an issue was fixed when this post-edit verification passed/i);
 	assert.match(deepResearchPrompt, /verify that any fixes claimed in the provenance are reflected in the final candidate/i);
+});
+
+test("lit workflow recovers from plan edit JSON failures", () => {
+	const litPrompt = readFileSync(join(repoRoot, "prompts", "lit.md"), "utf8");
+
+	assert.match(litPrompt, /outputs\/\.plans\/<slug>\.md/i);
+	assert.match(litPrompt, /JSON parse error/i);
+	assert.match(litPrompt, /rewrite the full corrected plan file/i);
+	assert.match(litPrompt, /continue to final artifact\/provenance verification/i);
 });
 
 test("deepresearch keeps subagent tool calls small and skips subagents for narrow explainers", () => {
@@ -174,6 +199,7 @@ test("workflow prompts except explicit gated workflows do not introduce implicit
 		"draft.md",
 		"lit.md",
 		"review.md",
+		"recipe.md",
 		"summarize.md",
 		"watch.md",
 	];

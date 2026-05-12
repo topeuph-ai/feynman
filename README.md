@@ -6,7 +6,7 @@
 <p align="center">The open source AI research agent.</p>
 <p align="center">
   <a href="https://feynman.is/docs"><img alt="Docs" src="https://img.shields.io/badge/docs-feynman.is-0d9668?style=flat-square" /></a>
-  <a href="https://github.com/getcompanion-ai/feynman/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/getcompanion-ai/feynman?style=flat-square" /></a>
+  <a href="https://github.com/companion-inc/feynman/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/companion-inc/feynman?style=flat-square" /></a>
 </p>
 
 ---
@@ -51,9 +51,21 @@ curl -fsSL https://feynman.is/install-skills | bash
 irm https://feynman.is/install-skills.ps1 | iex
 ```
 
-That installs the skill library into `~/.codex/skills/feynman`.
+That installs the skill library into `~/.codex/skills/feynman` for Codex. You can also name the Codex target explicitly:
 
-For a repo-local install instead:
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://feynman.is/install-skills | bash -s -- --codex
+```
+
+**Windows (PowerShell):**
+
+```powershell
+& ([scriptblock]::Create((irm https://feynman.is/install-skills.ps1))) -Scope Codex
+```
+
+For a repo-local Claude/agent install instead:
 
 **macOS / Linux:**
 
@@ -68,6 +80,22 @@ curl -fsSL https://feynman.is/install-skills | bash -s -- --repo
 ```
 
 That installs into `.agents/skills/feynman` under the current repository.
+
+For an OpenCode project-local install instead:
+
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://feynman.is/install-skills | bash -s -- --opencode
+```
+
+**Windows (PowerShell):**
+
+```powershell
+& ([scriptblock]::Create((irm https://feynman.is/install-skills.ps1))) -Scope OpenCode
+```
+
+That installs into `.opencode/skills/feynman` under the current repository.
 
 These installers download the bundled `skills/` and `prompts/` trees plus the repo guidance files referenced by those skills. They do not install the Feynman terminal, bundled Node runtime, auth storage, or Pi packages.
 
@@ -90,6 +118,9 @@ $ feynman audit 2401.12345
 
 $ feynman replicate "chain-of-thought improves math"
 → Replicates experiments on local or cloud GPUs
+
+$ feynman recipe "fine-tune a small model for math reasoning"
+→ Finds ranked, implementable ML training recipes from papers, datasets, docs, and code
 ```
 
 ---
@@ -105,6 +136,7 @@ Ask naturally or use slash commands as shortcuts.
 | `/review <artifact>` | Simulated peer review with severity and revision plan |
 | `/audit <item>` | Paper vs. codebase mismatch audit |
 | `/replicate <paper>` | Replicate experiments on local or cloud GPUs |
+| `/recipe <task-or-paper>` | Ranked ML training recipes with dataset, method, code, and verification status |
 | `/compare <topic>` | Source comparison matrix |
 | `/draft <topic>` | Paper-style draft from research findings |
 | `/autoresearch <idea>` | Autonomous experiment loop |
@@ -127,8 +159,9 @@ Four bundled research agents, dispatched automatically.
 ### Skills & Tools
 
 - **[AlphaXiv](https://www.alphaxiv.org/)** — paper search, Q&A, code reading, annotations (via `alpha` CLI)
+- **[Hugging Face Hub](https://huggingface.co/docs/hub/api)** — dataset metadata, split/schema inspection, and small file reads from model, dataset, and Space repos
 - **Docker** — isolated container execution for safe experiments on your machine
-- **Web search** — Gemini or Perplexity, zero-config default
+- **Web search** — Exa, Perplexity, or Gemini API; no Chromium cookie access by default
 - **Session search** — indexed recall across prior research sessions
 - **Preview** — browser and PDF export of generated artifacts
 - **Modal** — serverless GPU compute for burst training and inference
@@ -138,17 +171,17 @@ Four bundled research agents, dispatched automatically.
 
 ### How it works
 
-Built on [Pi](https://github.com/badlogic/pi-mono) for the agent runtime, [alphaXiv](https://www.alphaxiv.org/) for paper search and analysis, and CLI tools for compute and execution. Capabilities are delivered as [Pi skills](https://github.com/badlogic/pi-skills) — Markdown instruction files synced to `~/.feynman/agent/skills/` on startup. Every output is source-grounded — claims link to papers, docs, or repos with direct URLs.
+Built on [Pi](https://github.com/badlogic/pi-mono) for the agent runtime, [alphaXiv](https://www.alphaxiv.org/) for paper search and analysis, and CLI tools for compute and execution. Runtime resources follow Pi's documented package model for [packages](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/packages.md), [extensions](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/extensions.md), and [skills](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/skills.md). Hugging Face inspection uses the public [Hub API endpoints](https://huggingface.co/docs/hub/api) and `HF_TOKEN` / `HUGGINGFACE_HUB_TOKEN` environment variables documented by [`huggingface_hub`](https://huggingface.co/docs/huggingface_hub/main/en/package_reference/environment_variables). The ML recipe workflow was informed by the open-source [Hugging Face `ml-intern`](https://github.com/huggingface/ml-intern) research-agent repo, but is implemented as native Feynman prompts, skills, and read-only tools. Every output is source-grounded — claims link to papers, docs, or repos with direct URLs.
 
 ---
 
 ### Star History
 
-<a href="https://www.star-history.com/?repos=getcompanion-ai%2Ffeynman&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=companion-inc%2Ffeynman&type=date&legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=getcompanion-ai/feynman&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=getcompanion-ai/feynman&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=getcompanion-ai/feynman&type=date&legend=top-left" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=companion-inc/feynman&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=companion-inc/feynman&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=companion-inc/feynman&type=date&legend=top-left" />
   </picture>
 </a>
 
@@ -159,7 +192,7 @@ Built on [Pi](https://github.com/badlogic/pi-mono) for the agent runtime, [alpha
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide.
 
 ```bash
-git clone https://github.com/getcompanion-ai/feynman.git
+git clone https://github.com/companion-inc/feynman.git
 cd feynman
 nvm use || nvm install
 npm install

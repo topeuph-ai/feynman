@@ -2,13 +2,15 @@ import { spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { delimiter, dirname, resolve } from "node:path";
+import { delimiter, dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FEYNMAN_LOGO_HTML } from "../logo.mjs";
 import { patchAlphaHubAuthSource } from "./lib/alpha-hub-auth-patch.mjs";
+import { patchAlphaHubSearchSource } from "./lib/alpha-hub-search-patch.mjs";
 import { patchPiAgentCoreSource } from "./lib/pi-agent-core-patch.mjs";
 import { patchPiExtensionLoaderSource } from "./lib/pi-extension-loader-patch.mjs";
-import { patchPiGoogleLegacySchemaSource } from "./lib/pi-google-legacy-schema-patch.mjs";
+import { patchPiPackageManagerSource } from "./lib/pi-package-manager-patch.mjs";
+import { patchPiTuiSource } from "./lib/pi-tui-patch.mjs";
 import { PI_WEB_ACCESS_PATCH_TARGETS, patchPiWebAccessSource } from "./lib/pi-web-access-patch.mjs";
 import { PI_SUBAGENTS_PATCH_TARGETS, patchPiSubagentsSource, stripPiSubagentBuiltinModelSource } from "./lib/pi-subagents-patch.mjs";
 
@@ -65,7 +67,9 @@ const bunCliPath = piPackageRoot ? resolve(piPackageRoot, "dist", "bun", "cli.js
 const interactiveModePath = piPackageRoot ? resolve(piPackageRoot, "dist", "modes", "interactive", "interactive-mode.js") : null;
 const interactiveThemePath = piPackageRoot ? resolve(piPackageRoot, "dist", "modes", "interactive", "theme", "theme.js") : null;
 const extensionLoaderPath = piPackageRoot ? resolve(piPackageRoot, "dist", "core", "extensions", "loader.js") : null;
+const packageManagerPath = piPackageRoot ? resolve(piPackageRoot, "dist", "core", "package-manager.js") : null;
 const agentLoopPath = piAgentCoreRoot ? resolve(piAgentCoreRoot, "dist", "agent-loop.js") : null;
+const tuiPath = piTuiRoot ? resolve(piTuiRoot, "dist", "tui.js") : null;
 const terminalPath = piTuiRoot ? resolve(piTuiRoot, "dist", "terminal.js") : null;
 const editorPath = piTuiRoot ? resolve(piTuiRoot, "dist", "components", "editor.js") : null;
 const workspaceRoot = resolve(appRoot, ".feynman", "npm", "node_modules");
@@ -75,6 +79,13 @@ const workspaceAgentLoopPath = resolve(
 	"pi-agent-core",
 	"dist",
 	"agent-loop.js",
+);
+const workspaceTuiPath = resolve(
+	workspaceRoot,
+	"@mariozechner",
+	"pi-tui",
+	"dist",
+	"tui.js",
 );
 const workspaceExtensionLoaderPath = resolve(
 	workspaceRoot,
@@ -86,7 +97,6 @@ const workspaceExtensionLoaderPath = resolve(
 	"loader.js",
 );
 const piSubagentsRoot = resolve(workspaceRoot, "pi-subagents");
-const webAccessPath = resolve(workspaceRoot, "pi-web-access", "index.ts");
 const sessionSearchIndexerPath = resolve(
 	workspaceRoot,
 	"@kaiserlich-dev",
@@ -100,13 +110,13 @@ const workspaceDir = resolve(appRoot, ".feynman", "npm");
 const workspacePackageJsonPath = resolve(workspaceDir, "package.json");
 const workspaceManifestPath = resolve(workspaceDir, ".runtime-manifest.json");
 const workspaceArchivePath = resolve(appRoot, ".feynman", "runtime-workspace.tgz");
+const workspaceNpmConfigPath = resolve(workspaceDir, ".npmrc");
 const workspaceSetupLockDir = resolve(appRoot, ".feynman", ".workspace-setup.lock");
 const globalNodeModulesRoot = resolve(feynmanNpmPrefix, "lib", "node_modules");
-const PRUNE_VERSION = 3;
+const PRUNE_VERSION = 6;
 const WORKSPACE_SETUP_LOCK_STALE_MS = 300000;
 const NATIVE_PACKAGE_SPECS = new Set([
 	"@kaiserlich-dev/pi-session-search",
-	"@samfp/pi-memory",
 ]);
 const FILTERED_INSTALL_OUTPUT_PATTERNS = [
 	/npm warn deprecated node-domexception@1\.0\.0/i,
@@ -122,7 +132,7 @@ function arraysMatch(left, right) {
 
 function supportsNativePackageSources(version = process.versions.node) {
 	const [major = "0"] = version.replace(/^v/, "").split(".");
-	return (Number.parseInt(major, 10) || 0) <= 24;
+	return (Number.parseInt(major, 10) || 0) <= 22;
 }
 
 function createInstallCommand(packageManager, packageSpecs) {
@@ -183,6 +193,8 @@ function installWorkspacePackages(packageSpecs) {
 		env: {
 			...process.env,
 			PATH: getPathWithCurrentNode(process.env.PATH),
+			npm_config_userconfig: workspaceNpmConfigPath,
+			NPM_CONFIG_USERCONFIG: workspaceNpmConfigPath,
 		},
 	});
 
@@ -298,6 +310,11 @@ function linkPointsTo(linkPath, targetPath) {
 	}
 }
 
+function pathInsideRoot(path, root) {
+	const relativePath = relative(root, path);
+	return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+}
+
 function listWorkspacePackageNames(root) {
 	if (!existsSync(root)) return [];
 	const names = [];
@@ -315,6 +332,37 @@ function listWorkspacePackageNames(root) {
 		names.push(entry.name);
 	}
 	return names;
+}
+
+function removeEmptyScopeDirectory(packagePath, packageName) {
+	if (!packageName.startsWith("@")) return;
+
+	const scopePath = dirname(packagePath);
+	if (!pathInsideRoot(scopePath, globalNodeModulesRoot) || !existsSync(scopePath)) return;
+	if (readdirSync(scopePath).length > 0) return;
+
+	rmSync(scopePath, { recursive: true, force: true });
+}
+
+function pruneStaleBundledPackageLinks(currentPackageNames) {
+	if (!existsSync(globalNodeModulesRoot)) return;
+
+	const currentPackages = new Set(currentPackageNames);
+	for (const packageName of listWorkspacePackageNames(globalNodeModulesRoot)) {
+		const packagePath = resolve(globalNodeModulesRoot, packageName);
+		let linkedTarget;
+		try {
+			if (!lstatSync(packagePath).isSymbolicLink()) continue;
+			linkedTarget = resolve(dirname(packagePath), readlinkSync(packagePath));
+		} catch {
+			continue;
+		}
+		if (!pathInsideRoot(linkedTarget, workspaceRoot)) continue;
+		if (currentPackages.has(packageName) && existsSync(linkedTarget)) continue;
+
+		rmSync(packagePath, { force: true });
+		removeEmptyScopeDirectory(packagePath, packageName);
+	}
 }
 
 function linkBundledPackage(packageName) {
@@ -343,7 +391,9 @@ function linkBundledPackage(packageName) {
 function ensureBundledPackageLinks(packageSpecs) {
 	if (!workspaceMatchesRuntime(packageSpecs)) return;
 
-	for (const packageName of listWorkspacePackageNames(workspaceRoot)) {
+	const packageNames = listWorkspacePackageNames(workspaceRoot);
+	pruneStaleBundledPackageLinks(packageNames);
+	for (const packageName of packageNames) {
 		linkBundledPackage(packageName);
 	}
 }
@@ -653,6 +703,14 @@ for (const loaderPath of [extensionLoaderPath, workspaceExtensionLoaderPath].fil
 	}
 }
 
+if (packageManagerPath && existsSync(packageManagerPath)) {
+	const source = readFileSync(packageManagerPath, "utf8");
+	const patched = patchPiPackageManagerSource(source);
+	if (patched !== source) {
+		writeFileSync(packageManagerPath, patched, "utf8");
+	}
+}
+
 for (const entryPath of [agentLoopPath, workspaceAgentLoopPath].filter(Boolean)) {
 	if (!existsSync(entryPath)) {
 		continue;
@@ -660,6 +718,18 @@ for (const entryPath of [agentLoopPath, workspaceAgentLoopPath].filter(Boolean))
 
 	const source = readFileSync(entryPath, "utf8");
 	const patched = patchPiAgentCoreSource(source);
+	if (patched !== source) {
+		writeFileSync(entryPath, patched, "utf8");
+	}
+}
+
+for (const entryPath of [tuiPath, workspaceTuiPath].filter(Boolean)) {
+	if (!existsSync(entryPath)) {
+		continue;
+	}
+
+	const source = readFileSync(entryPath, "utf8");
+	const patched = patchPiTuiSource(source);
 	if (patched !== source) {
 		writeFileSync(entryPath, patched, "utf8");
 	}
@@ -829,17 +899,6 @@ if (editorPath && existsSync(editorPath)) {
 	writeFileSync(editorPath, editorSource, "utf8");
 }
 
-if (existsSync(webAccessPath)) {
-	const source = readFileSync(webAccessPath, "utf8");
-	if (source.includes('pi.registerCommand("search",')) {
-		writeFileSync(
-			webAccessPath,
-			source.replace('pi.registerCommand("search",', 'pi.registerCommand("web-results",'),
-			"utf8",
-		);
-	}
-}
-
 const piWebAccessRoot = resolve(workspaceRoot, "pi-web-access");
 
 if (existsSync(piWebAccessRoot)) {
@@ -866,7 +925,6 @@ if (existsSync(sessionSearchIndexerPath)) {
 }
 
 const oauthPagePath = piAiRoot ? resolve(piAiRoot, "dist", "utils", "oauth", "oauth-page.js") : null;
-const googleSharedPath = piAiRoot ? resolve(piAiRoot, "dist", "providers", "google-shared.js") : null;
 
 if (oauthPagePath && existsSync(oauthPagePath)) {
 	let source = readFileSync(oauthPagePath, "utf8");
@@ -879,16 +937,11 @@ if (oauthPagePath && existsSync(oauthPagePath)) {
 	if (changed) writeFileSync(oauthPagePath, source, "utf8");
 }
 
-if (googleSharedPath && existsSync(googleSharedPath)) {
-	const source = readFileSync(googleSharedPath, "utf8");
-	const patched = patchPiGoogleLegacySchemaSource(source);
-	if (patched !== source) {
-		writeFileSync(googleSharedPath, patched, "utf8");
-	}
-}
-
 const alphaHubAuthPath = findPackageRoot("@companion-ai/alpha-hub")
 	? resolve(findPackageRoot("@companion-ai/alpha-hub"), "src", "lib", "auth.js")
+	: null;
+const alphaHubSearchPath = findPackageRoot("@companion-ai/alpha-hub")
+	? resolve(findPackageRoot("@companion-ai/alpha-hub"), "src", "lib", "alphaxiv.js")
 	: null;
 
 if (alphaHubAuthPath && existsSync(alphaHubAuthPath)) {
@@ -896,6 +949,13 @@ if (alphaHubAuthPath && existsSync(alphaHubAuthPath)) {
 	const patched = patchAlphaHubAuthSource(source);
 	if (patched !== source) {
 		writeFileSync(alphaHubAuthPath, patched, "utf8");
+	}
+}
+if (alphaHubSearchPath && existsSync(alphaHubSearchPath)) {
+	const source = readFileSync(alphaHubSearchPath, "utf8");
+	const patched = patchAlphaHubSearchSource(source);
+	if (patched !== source) {
+		writeFileSync(alphaHubSearchPath, patched, "utf8");
 	}
 }
 

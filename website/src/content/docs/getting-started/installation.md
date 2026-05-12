@@ -86,16 +86,28 @@ If you added the launcher directory to `PATH` manually, remove that entry as wel
 
 If you only want Feynman's research skills and not the full terminal runtime, install the skill library separately.
 
-For a user-level install into `~/.codex/skills/feynman`:
+For a Codex user-level install into `~/.codex/skills/feynman`:
 
 ```bash
 curl -fsSL https://feynman.is/install-skills | bash
 ```
 
-For a repo-local install into `.agents/skills/feynman` under the current repository:
+You can also name the Codex target explicitly:
+
+```bash
+curl -fsSL https://feynman.is/install-skills | bash -s -- --codex
+```
+
+For a repo-local Claude/agent install into `.agents/skills/feynman` under the current repository:
 
 ```bash
 curl -fsSL https://feynman.is/install-skills | bash -s -- --repo
+```
+
+For an OpenCode project-local install into `.opencode/skills/feynman`:
+
+```bash
+curl -fsSL https://feynman.is/install-skills | bash -s -- --opencode
 ```
 
 On Windows, install the skills into your Codex skill directory:
@@ -104,10 +116,22 @@ On Windows, install the skills into your Codex skill directory:
 irm https://feynman.is/install-skills.ps1 | iex
 ```
 
+Or name the Codex target explicitly:
+
+```powershell
+& ([scriptblock]::Create((irm https://feynman.is/install-skills.ps1))) -Scope Codex
+```
+
 Or install them repo-locally:
 
 ```powershell
 & ([scriptblock]::Create((irm https://feynman.is/install-skills.ps1))) -Scope Repo
+```
+
+Or install them into an OpenCode project:
+
+```powershell
+& ([scriptblock]::Create((irm https://feynman.is/install-skills.ps1))) -Scope OpenCode
 ```
 
 These installers download the bundled `skills/` and `prompts/` trees plus the repo guidance files referenced by those skills. They do not install the Feynman terminal, bundled Node runtime, auth storage, or Pi packages.

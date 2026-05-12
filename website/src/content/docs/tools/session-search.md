@@ -2,7 +2,7 @@
 title: Session Search
 description: Search prior Feynman session transcripts to recall past research.
 section: Tools
-order: 3
+order: 4
 ---
 
 The session search tool recovers prior Feynman work from stored session transcripts. Every Feynman session is persisted to disk, and session search lets you find and reference past research, findings, and generated artifacts without starting over.
@@ -14,6 +14,8 @@ Session search is an optional package. Install it with:
 ```bash
 feynman packages install session-search
 ```
+
+It is available through Node.js 22.x while the upstream sqlite dependency remains native-bound. On newer Node majors, Feynman skips it instead of making first launch depend on a local C++ build toolchain.
 
 Once installed, the `/search` slash command and automatic session recall become available in all future sessions.
 

@@ -15,7 +15,9 @@ jobs:
       contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
-      should_release: ${{ steps.version.outputs.should_release }}
+      should_publish_npm: ${{ steps.version.outputs.should_publish_npm }}
+      should_release_github: ${{ steps.version.outputs.should_release_github }}
+      should_run_verify: ${{ steps.version.outputs.should_run_verify }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -30,15 +32,25 @@ jobs:
           LOCAL=$(node -p "require('./package.json').version")
           echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
           PUBLISHED=$(npm view @companion-ai/feynman version 2>/dev/null || true)
-          if [ "$PUBLISHED" = "$LOCAL" ] || gh release view "v$LOCAL" >/dev/null 2>&1; then
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          if [ "$PUBLISHED" = "$LOCAL" ]; then
+            echo "should_publish_npm=false" >> "$GITHUB_OUTPUT"
           else
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "should_publish_npm=true" >> "$GITHUB_OUTPUT"
+          fi
+          if gh release view "v$LOCAL" >/dev/null 2>&1; then
+            echo "should_release_github=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release_github=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$PUBLISHED" = "$LOCAL" ] && gh release view "v$LOCAL" >/dev/null 2>&1; then
+            echo "should_run_verify=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run_verify=true" >> "$GITHUB_OUTPUT"
           fi
 
   verify:
     needs: version-check
-    if: needs.version-check.outputs.should_release == 'true'
+    if: needs.version-check.outputs.should_run_verify == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,7 +68,7 @@ jobs:
     needs:
       - version-check
       - verify
-    if: needs.version-check.outputs.should_release == 'true' && needs.verify.result == 'success'
+    if: needs.version-check.outputs.should_publish_npm == 'true' && needs.verify.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -68,11 +80,21 @@ jobs:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
       - run: npm ci
-      - run: npm publish --provenance --access public
+      - shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          LOCAL=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view @companion-ai/feynman version 2>/dev/null || true)
+          if [ "$PUBLISHED" = "$LOCAL" ]; then
+            echo "@companion-ai/feynman@$LOCAL is already published; skipping npm publish."
+            exit 0
+          fi
+          npx npm@latest publish --access public --provenance
 
   build-native-bundles:
     needs: version-check
-    if: needs.version-check.outputs.should_release == 'true'
+    if: needs.version-check.outputs.should_release_github == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -123,9 +145,8 @@ jobs:
   release-github:
     needs:
       - version-check
-      - publish-npm
       - build-native-bundles
-    if: needs.version-check.outputs.should_release == 'true' && needs.publish-npm.result == 'success' && needs.build-native-bundles.result == 'success'
+    if: needs.version-check.outputs.should_release_github == 'true' && needs.build-native-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write

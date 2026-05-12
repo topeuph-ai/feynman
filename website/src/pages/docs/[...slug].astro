@@ -1,18 +1,18 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import Layout from '@/layouts/main.astro';
 
 export async function getStaticPaths() {
   const docs = await getCollection('docs');
   return docs.map((entry) => ({
-    params: { slug: entry.slug },
+    params: { slug: entry.id },
     props: { entry },
   }));
 }
 
 const { entry } = Astro.props;
-const { Content } = await entry.render();
-const currentSlug = entry.slug;
+const { Content } = await render(entry);
+const currentSlug = entry.id;
 
 const sections = [
   {
@@ -29,9 +29,11 @@ const sections = [
     items: [
       { label: 'Deep Research', slug: 'workflows/deep-research' },
       { label: 'Literature Review', slug: 'workflows/literature-review' },
+      { label: 'Biomedical Literature Review', slug: 'workflows/biomedical-literature-review' },
       { label: 'Peer Review', slug: 'workflows/review' },
       { label: 'Code Audit', slug: 'workflows/audit' },
       { label: 'Replication', slug: 'workflows/replication' },
+      { label: 'ML Training Recipe', slug: 'workflows/recipe' },
       { label: 'Source Comparison', slug: 'workflows/compare' },
       { label: 'Draft Writing', slug: 'workflows/draft' },
       { label: 'Autoresearch', slug: 'workflows/autoresearch' },
@@ -52,6 +54,7 @@ const sections = [
     items: [
       { label: 'AlphaXiv', slug: 'tools/alphaxiv' },
       { label: 'Web Search', slug: 'tools/web-search' },
+      { label: 'Hugging Face Hub', slug: 'tools/hugging-face' },
       { label: 'Session Search', slug: 'tools/session-search' },
       { label: 'Preview', slug: 'tools/preview' },
     ],

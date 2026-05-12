@@ -7,6 +7,222 @@ order: 4
 
 This page summarizes what changed in recent Feynman releases. GitHub releases use the same version-specific notes from the repository `RELEASES.md` file.
 
+## v0.2.54 - 2026-05-11
+
+### Runtime Reliability
+
+- Fixed packed npm installs that hoist package dependencies outside Feynman's package root. Feynman now falls back to its vendored `.feynman/npm` runtime workspace when resolving Pi, so `feynman doctor` and prompt launches work from a clean packed install.
+- Applied runtime node-module patches to both package-local dependencies and the vendored runtime workspace.
+
+### Validation
+
+- Added regression coverage for packed-install Pi path resolution and vendored runtime patching.
+- Added an isolated packed-install E2E that installs the generated tarball into a clean prefix/home and launches Feynman from that install.
+
+## v0.2.53 - 2026-05-11
+
+### Runtime Reliability
+
+- Hardened alphaXiv search fallback again: if both the removed MCP search tools and `discover_papers` are unavailable, `alpha search` now falls back to the public alphaXiv fast REST search endpoint.
+- Patched the Pi extension loader to alias both `@mariozechner/*` and `@earendil-works/*` Pi runtime imports to Feynman's already initialized bundled runtime, preventing mixed-namespace TUI/theme crashes when expanding tool output.
+- Applied the extension-loader patch to the vendored runtime archive path, not only the local development `node_modules` path.
+
+### Validation
+
+- Added regression coverage for upgrading the old `discover_papers`-only alphaXiv patch and for dual-namespace Pi runtime aliasing.
+
+## v0.2.52 - 2026-05-09
+
+### Runtime Reliability
+
+- Seed bundled runtime packages before package updates so missing undeclared extension dependencies such as `typebox` are repaired before extension load.
+- Include Pi's `typebox` runtime package beside installed Pi packages when Feynman has to run npm directly.
+- Include the new `@earendil-works/*` Pi runtime package namespace beside the legacy `@mariozechner/*` namespace so updated Pi extensions such as `pi-btw` and `pi-markdown-preview` can load.
+- Patched alphaXiv search in the bundled alpha-hub runtime to fall back to the newer `discover_papers` MCP tool when alphaXiv no longer exposes the older search tool names.
+- Hardened model tool-call handling for common alias mistakes: `search_web` now maps to `web_search`, and bare `fetch` / `WebFetch` / `read_url_content` map to `fetch_content` with array URLs normalized.
+- Fixed the Windows docker probe in the research header so `cmd.exe` no longer emits localized mojibake from Unix-only `/dev/null` redirection.
+
+### Workflow Prompts
+
+- Added a shared tool-discipline block to every workflow prompt so lead agents see canonical tool names before workflow-specific instructions.
+
+### Validation
+
+- Added regression coverage for alphaXiv search fallback, Pi tool alias normalization, bundled runtime dependency installs, and prompt tool discipline.
+
+## v0.2.51 - 2026-05-09
+
+### Package Manager
+
+- Hardened Pi package installs and updates so peer-only Pi runtime packages are materialized into Feynman's npm prefix beside installed Pi packages.
+- This prevents optional or legacy Pi packages from failing at extension load time when they import Pi runtime modules that npm did not install because Feynman uses legacy peer dependency mode.
+
+### Validation
+
+- Added package-manager coverage for installing Pi runtime peers beside Pi npm packages.
+
+## v0.2.50 - 2026-05-09
+
+### Skills Installer
+
+- Added an explicit Codex skills target for standalone skill installs: `--codex` on macOS/Linux and `-Scope Codex` on Windows.
+- Kept the existing default/user install behavior compatible while documenting the Codex, repo-local Claude/agent, and OpenCode target paths.
+
+### Validation
+
+- Added installer coverage for the Codex target and target-specific docs.
+
+## v0.2.49 - 2026-05-07
+
+### Website
+
+- Updated the website build stack to patched Astro 6/Vite 7.
+- Migrated docs content collections to Astro's current content-layer config.
+
+### Validation
+
+- Website build, typecheck, lint, and production audit passed.
+- Root build, typecheck, full tests, package dry-run, native bundle build, and production audit passed after the website upgrade.
+
+## v0.2.48 - 2026-05-07
+
+### Fixes
+
+- Restored Node.js 24 support for the Feynman CLI and npm package.
+- Slimmed the default Pi package set to the core AI research essentials: alphaXiv access, subagents, document parsing, and web access.
+- Moved memory and session search out of the default install path so optional package failures cannot block first launch.
+- Kept session search gated to Node.js 22.x because its upstream sqlite dependency still depends on native prebuild coverage.
+- Upgraded the TypeScript toolchain to 6.0 and updated the build config for its explicit `rootDir` requirement.
+
+### Documentation
+
+- Updated package-stack, setup, install, and session-search docs to distinguish core researcher packages from optional extras.
+
+### Validation
+
+- Full local tests passed: 157/157.
+- Typecheck, root build, website build, native bundle build, production `npm audit --omit=dev`, and package dry-run passed.
+- Package dry-run verified the bundled runtime workspace excludes memory and session search by default.
+
+## v0.2.47 - 2026-05-07
+
+### Documentation
+
+- Clarified that Feynman's package, extension, and skill wiring follows Pi's upstream package model.
+- Linked the Hugging Face Hub API and environment-variable docs from the README and website docs.
+- Clarified that Hugging Face file reads refuse obvious model weights, archives, and dataset shards before download.
+
+### Validation
+
+- Tightened the Hugging Face binary-file refusal regression test.
+- Full local tests passed: 157/157.
+- Typecheck, root build, website build, and production `npm audit --omit=dev` passed.
+
+## v0.2.46 - 2026-05-07
+
+### Updates
+
+- Added the `/recipe` workflow for ranked ML training recipes backed by papers, datasets, docs, implementation paths, and verification status.
+- Added read-only Hugging Face Hub inspection tools for dataset metadata, repo file listing, and small text file reads. These support recipe and replication grounding without requiring Hub write access, and refuse obvious weight/archive/shard reads before download.
+- Updated `/replicate` so ML-heavy targets perform a recipe extraction pass before execution planning.
+
+### Documentation
+
+- Added website docs for the `/recipe` workflow and Hugging Face Hub tools.
+- Updated README, quickstart, command references, agent docs, replication docs, and package-stack docs for the new workflow and tools.
+
+### Validation
+
+- Added unit coverage for Hugging Face tool registration, endpoint formatting, auth headers, file listing limits, truncation, and binary-file refusal.
+- Full local tests passed: 157/157.
+- Typecheck, root build, website build, CLI help, and live Hugging Face endpoint smoke checks passed.
+
+## v0.2.45 - 2026-05-07
+
+### Updates
+
+- Updated the bundled Pi runtime packages to `@mariozechner/pi-ai@0.73.0` and `@mariozechner/pi-coding-agent@0.73.0`.
+- Updated `@clack/prompts` to `1.3.0` for the setup/onboarding prompt surface.
+
+### Validation
+
+- Full local tests passed: 154/154.
+- Typecheck, root build, website build, `feynman doctor`, and production `npm audit --omit=dev` passed.
+- JSONL RPC smoke passed with `get_state` and a `bash` command returning `FEYNMAN_RPC_OK`.
+- Release CI published npm `0.2.45`, built all native bundles, and created the GitHub release.
+
+## v0.2.44 - 2026-05-06
+
+### Fixes
+
+- Updated transitive dependency override pins to patched versions so production `npm audit` reports zero vulnerabilities.
+- This removes advisories in `basic-ftp`, `fast-xml-parser`, `hono`, and `ip-address` while keeping the dependency changes scoped to existing transitive packages.
+
+### Validation
+
+- Production `npm audit --omit=dev` passed with zero vulnerabilities.
+- Full local tests passed: 154/154.
+- Typecheck, root build, website build, and `feynman doctor` passed.
+
+## v0.2.43 - 2026-05-06
+
+### Fixes
+
+- Restricted `.feynman/web-search.json` permissions to user-only (`0600`) after Feynman writes web-search provider configuration.
+- This protects stored web-search API keys such as Exa, Perplexity, and Gemini keys from permissive local umasks.
+
+### Validation
+
+- Added POSIX regression coverage for saved web-search config permissions.
+- Full local tests passed: 154/154.
+- Typecheck and build passed.
+
+## v0.2.42 - 2026-05-06
+
+### Fixes
+
+- Fixed runtime RPC startup in projects with `.feynman/settings.json` package entries by patching Pi's project npm install path to use peer-dependency-compatible installs.
+- This prevents project-scoped package sync from failing on packages such as `@aliou/pi-processes` before the RPC session can start.
+
+### Validation
+
+- Added regression coverage for the embedded Pi package-manager patch.
+- Real `v0.2.41` release RPC testing reproduced the missing project-package install failure that this release fixes.
+
+## v0.2.41 - 2026-05-06
+
+### Fixes
+
+- Fixed startup package seeding so copied bundled packages are treated as satisfied instead of falling through to repeated global npm installs.
+- Seeded bundled packages before interactive setup reports missing packages, avoiding unnecessary first-run package prompts when the standalone bundle already has the runtime workspace.
+- Restricted supported Node.js runtimes to Node 20.19.x through Node 22.x because sqlite-backed Pi packages such as session search are not reliable under Node 24.
+- Updated release CI to build, test, publish, and package native bundles with Node 22.
+
+### Documentation
+
+- Added research-only biomedical literature review guidance with PICO/PICOS framing, evidence-type separation, privacy boundaries, and non-clinical-advice wording.
+- Updated npm install docs to show the new supported Node engine range.
+
+### Validation
+
+- Full local tests passed: 151/151.
+- Typecheck and root build passed.
+
+## v0.2.40 - 2026-04-19
+
+### Fixes
+
+- Fixed local-model web-search failures where a model calls non-existent search aliases such as `google:search`; Feynman now maps those aliases to Pi's real `web_search` tool when it is available.
+- Granted the bundled researcher and verifier agents access to Pi web-access tools (`web_search`, `fetch_content`, and `get_search_content`) so their prompts and allowed tools match.
+- Made `feynman doctor` and `feynman search status` explicitly show when `web-search.json` has not been created and how to initialize it.
+- Stopped treating expired OAuth credentials as authenticated model availability, so `doctor`, `model list`, and onboarding guide users to re-login instead of failing later in chat.
+- Added a package-workspace setup lock so concurrent Feynman invocations do not race while restoring `.feynman/npm`.
+
+### Validation
+
+- Full local tests passed: 137/137.
+- Typecheck, build, vendored runtime regeneration, runtime archive inspection, sequential CLI smoke, and parallel CLI smoke passed.
+
 ## v0.2.39 - 2026-04-19
 
 ### Fixes

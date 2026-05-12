@@ -4,7 +4,11 @@ import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 import { patchPiAgentCoreSource } from "./lib/pi-agent-core-patch.mjs";
+import { patchPiExtensionLoaderSource } from "./lib/pi-extension-loader-patch.mjs";
+import { patchPiTuiSource } from "./lib/pi-tui-patch.mjs";
+import { PI_WEB_ACCESS_PATCH_TARGETS, patchPiWebAccessSource } from "./lib/pi-web-access-patch.mjs";
 import { PI_SUBAGENTS_PATCH_TARGETS, patchPiSubagentsSource, stripPiSubagentBuiltinModelSource } from "./lib/pi-subagents-patch.mjs";
+import { patchAlphaHubSearchSource } from "./lib/alpha-hub-search-patch.mjs";
 
 const appRoot = resolve(import.meta.dirname, "..");
 const settingsPath = resolve(appRoot, ".feynman", "settings.json");
@@ -15,14 +19,40 @@ const workspaceDir = resolve(appRoot, ".feynman", "npm");
 const workspaceNodeModulesDir = resolve(workspaceDir, "node_modules");
 const manifestPath = resolve(workspaceDir, ".runtime-manifest.json");
 const workspacePackageJsonPath = resolve(workspaceDir, "package.json");
+const workspaceNpmConfigPath = resolve(workspaceDir, ".npmrc");
 const workspaceArchivePath = resolve(feynmanDir, "runtime-workspace.tgz");
-const PRUNE_VERSION = 4;
+const PRUNE_VERSION = 6;
 const PINNED_RUNTIME_PACKAGES = [
 	"@mariozechner/pi-agent-core",
 	"@mariozechner/pi-ai",
 	"@mariozechner/pi-coding-agent",
 	"@mariozechner/pi-tui",
+	"typebox",
 ];
+const PINNED_RUNTIME_PACKAGE_SPECS = [
+	"@earendil-works/pi-agent-core@0.74.0",
+	"@earendil-works/pi-ai@0.74.0",
+	"@earendil-works/pi-coding-agent@0.74.0",
+	"@earendil-works/pi-tui@0.74.0",
+];
+const NATIVE_PACKAGE_SPECS = new Set([
+	"@kaiserlich-dev/pi-session-search",
+]);
+
+function supportsNativePackageSources(version = process.versions.node) {
+	const [major = "0"] = version.replace(/^v/, "").split(".");
+	return (Number.parseInt(major, 10) || 0) <= 22;
+}
+
+function parsePackageName(spec) {
+	const match = spec.match(/^(@?[^@]+(?:\/[^@]+)?)(?:@.+)?$/);
+	return match?.[1] ?? spec;
+}
+
+function filterUnsupportedPackageSpecs(packageSpecs) {
+	if (supportsNativePackageSources()) return packageSpecs;
+	return packageSpecs.filter((spec) => !NATIVE_PACKAGE_SPECS.has(parsePackageName(spec)));
+}
 
 function readPackageSpecs() {
 	const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
@@ -38,13 +68,9 @@ function readPackageSpecs() {
 			packageSpecs.push(`${packageName}@${version}`);
 		}
 	}
+	packageSpecs.push(...PINNED_RUNTIME_PACKAGE_SPECS);
 
-	return Array.from(new Set(packageSpecs));
-}
-
-function parsePackageName(spec) {
-	const match = spec.match(/^(@?[^@]+(?:\/[^@]+)?)(?:@.+)?$/);
-	return match?.[1] ?? spec;
+	return filterUnsupportedPackageSpecs(Array.from(new Set(packageSpecs)));
 }
 
 function readLockedPackageVersion(packageName) {
@@ -78,7 +104,12 @@ function getRuntimeInputHash() {
 		packageLockPath,
 		settingsPath,
 		resolve(appRoot, "scripts", "lib", "pi-agent-core-patch.mjs"),
+		resolve(appRoot, "scripts", "lib", "pi-extension-loader-patch.mjs"),
+		resolve(appRoot, "scripts", "lib", "pi-package-manager-patch.mjs"),
+		resolve(appRoot, "scripts", "lib", "pi-tui-patch.mjs"),
+		resolve(appRoot, "scripts", "lib", "pi-web-access-patch.mjs"),
 		resolve(appRoot, "scripts", "lib", "pi-subagents-patch.mjs"),
+		resolve(appRoot, "scripts", "lib", "alpha-hub-search-patch.mjs"),
 	]) {
 		hash.update(path);
 		hash.update("\0");
@@ -129,6 +160,7 @@ function writeWorkspacePackageJson() {
 		) + "\n",
 		"utf8",
 	);
+	writeFileSync(workspaceNpmConfigPath, "", "utf8");
 }
 
 function childNpmInstallEnv() {
@@ -139,6 +171,8 @@ function childNpmInstallEnv() {
 		// publish artifact can be validated without poisoning the archive.
 		npm_config_dry_run: "false",
 		NPM_CONFIG_DRY_RUN: "false",
+		npm_config_userconfig: workspaceNpmConfigPath,
+		NPM_CONFIG_USERCONFIG: workspaceNpmConfigPath,
 	};
 }
 
@@ -243,6 +277,79 @@ function patchBundledPiAgentCore() {
 	return true;
 }
 
+function patchBundledPiTui() {
+	const tuiPath = resolve(workspaceNodeModulesDir, "@mariozechner", "pi-tui", "dist", "tui.js");
+	if (!existsSync(tuiPath)) {
+		return false;
+	}
+
+	const source = readFileSync(tuiPath, "utf8");
+	const patched = patchPiTuiSource(source);
+	if (patched === source) {
+		return false;
+	}
+	writeFileSync(tuiPath, patched, "utf8");
+	return true;
+}
+
+function patchBundledPiExtensionLoader() {
+	const loaderPath = resolve(
+		workspaceNodeModulesDir,
+		"@mariozechner",
+		"pi-coding-agent",
+		"dist",
+		"core",
+		"extensions",
+		"loader.js",
+	);
+	if (!existsSync(loaderPath)) {
+		return false;
+	}
+
+	const source = readFileSync(loaderPath, "utf8");
+	const patched = patchPiExtensionLoaderSource(source);
+	if (patched === source) {
+		return false;
+	}
+	writeFileSync(loaderPath, patched, "utf8");
+	return true;
+}
+
+function patchBundledPiWebAccess() {
+	const piWebAccessRoot = resolve(workspaceNodeModulesDir, "pi-web-access");
+	if (!existsSync(piWebAccessRoot)) {
+		return false;
+	}
+
+	let changed = false;
+	for (const relativePath of PI_WEB_ACCESS_PATCH_TARGETS) {
+		const entryPath = resolve(piWebAccessRoot, relativePath);
+		if (!existsSync(entryPath)) continue;
+
+		const source = readFileSync(entryPath, "utf8");
+		const patched = patchPiWebAccessSource(relativePath, source);
+		if (patched === source) continue;
+		writeFileSync(entryPath, patched, "utf8");
+		changed = true;
+	}
+	return changed;
+}
+
+function patchBundledAlphaHub() {
+	const alphaxivPath = resolve(workspaceNodeModulesDir, "@companion-ai", "alpha-hub", "src", "lib", "alphaxiv.js");
+	if (!existsSync(alphaxivPath)) {
+		return false;
+	}
+
+	const source = readFileSync(alphaxivPath, "utf8");
+	const patched = patchAlphaHubSearchSource(source);
+	if (patched === source) {
+		return false;
+	}
+	writeFileSync(alphaxivPath, patched, "utf8");
+	return true;
+}
+
 function archiveIsCurrent() {
 	if (!existsSync(workspaceArchivePath) || !existsSync(manifestPath)) {
 		return false;
@@ -266,7 +373,14 @@ const packageSpecs = readPackageSpecs();
 
 if (workspaceIsCurrent(packageSpecs)) {
 	console.log("[feynman] vendored runtime workspace already up to date");
-	if (patchBundledPiAgentCore() || patchBundledPiSubagents()) {
+	if (
+		patchBundledPiAgentCore() ||
+		patchBundledPiExtensionLoader() ||
+		patchBundledPiTui() ||
+		patchBundledPiWebAccess() ||
+		patchBundledPiSubagents() ||
+		patchBundledAlphaHub()
+	) {
 		writeManifest(packageSpecs);
 		console.log("[feynman] patched bundled Pi runtime");
 	}
@@ -283,7 +397,11 @@ console.log("[feynman] preparing vendored runtime workspace...");
 prepareWorkspace(packageSpecs);
 pruneWorkspace();
 patchBundledPiAgentCore();
+patchBundledPiExtensionLoader();
+patchBundledPiTui();
+patchBundledPiWebAccess();
 patchBundledPiSubagents();
+patchBundledAlphaHub();
 writeManifest(packageSpecs);
 createWorkspaceArchive();
 console.log("[feynman] vendored runtime workspace ready");

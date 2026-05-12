@@ -3,6 +3,13 @@ import type { PackageSource } from "@mariozechner/pi-coding-agent";
 export const CORE_PACKAGE_SOURCES = [
 	"npm:@companion-ai/alpha-hub",
 	"npm:pi-subagents",
+	"npm:pi-docparser",
+	"npm:pi-web-access",
+] as const;
+
+const LEGACY_CORE_PACKAGE_SOURCES = [
+	"npm:@companion-ai/alpha-hub",
+	"npm:pi-subagents",
 	"npm:pi-btw",
 	"npm:pi-docparser",
 	"npm:pi-web-access",
@@ -17,21 +24,41 @@ export const CORE_PACKAGE_SOURCES = [
 	"npm:@tmustier/pi-ralph-wiggum",
 ] as const;
 
-export const NATIVE_PACKAGE_SOURCES = [
-	"npm:@kaiserlich-dev/pi-session-search",
-	"npm:@samfp/pi-memory",
+const LEGACY_TELEMETRY_CORE_PACKAGE_SOURCES = [
+	...LEGACY_CORE_PACKAGE_SOURCES,
+	"npm:@devkade/pi-opentelemetry",
 ] as const;
 
-const CORE_PACKAGE_UPDATE_ALIASES: Record<string, (typeof CORE_PACKAGE_SOURCES)[number]> = {
+export const NATIVE_PACKAGE_SOURCES = [
+	"npm:@kaiserlich-dev/pi-session-search",
+] as const;
+
+const CORE_PACKAGE_UPDATE_ALIASES: Record<string, string> = {
 	memory: "npm:@samfp/pi-memory",
 	"pi-memory": "npm:@samfp/pi-memory",
 	"session-search": "npm:@kaiserlich-dev/pi-session-search",
 	"pi-session-search": "npm:@kaiserlich-dev/pi-session-search",
 };
 
-export const MAX_NATIVE_PACKAGE_NODE_MAJOR = 24;
+export const MAX_NATIVE_PACKAGE_NODE_MAJOR = 22;
+
+type OptionalPackagePreset = {
+	description: string;
+	sources: readonly string[];
+	platforms?: readonly NodeJS.Platform[];
+	maxNodeMajor?: number;
+};
 
 export const OPTIONAL_PACKAGE_PRESETS = {
+	memory: {
+		description: "Preference and correction memory across sessions.",
+		sources: ["npm:@samfp/pi-memory"],
+	},
+	"session-search": {
+		description: "Indexed recall for prior session transcripts.",
+		sources: ["npm:@kaiserlich-dev/pi-session-search"],
+		maxNodeMajor: MAX_NATIVE_PACKAGE_NODE_MAJOR,
+	},
 	"generative-ui": {
 		description: "Interactive Glimpse UI widgets.",
 		sources: ["npm:pi-generative-ui"],
@@ -41,6 +68,36 @@ export const OPTIONAL_PACKAGE_PRESETS = {
 
 export type OptionalPackagePresetName = keyof typeof OPTIONAL_PACKAGE_PRESETS;
 export type OptionalPackagePresetAlias = OptionalPackagePresetName | "ui" | "all-extras";
+
+const LEGACY_DEFAULT_PACKAGE_SETS = [
+	[
+		...CORE_PACKAGE_SOURCES,
+		"npm:pi-generative-ui",
+	],
+	[
+		...CORE_PACKAGE_SOURCES,
+		"npm:@devkade/pi-opentelemetry",
+	],
+	[
+		...CORE_PACKAGE_SOURCES,
+		"npm:@devkade/pi-opentelemetry",
+		"npm:pi-generative-ui",
+	],
+	[
+		...LEGACY_TELEMETRY_CORE_PACKAGE_SOURCES,
+	],
+	[
+		...LEGACY_TELEMETRY_CORE_PACKAGE_SOURCES,
+		"npm:pi-generative-ui",
+	],
+	[
+		...LEGACY_CORE_PACKAGE_SOURCES,
+	],
+	[
+		...LEGACY_CORE_PACKAGE_SOURCES,
+		"npm:pi-generative-ui",
+	],
+] as const;
 
 const LEGACY_DEFAULT_PACKAGE_SOURCES = [
 	...CORE_PACKAGE_SOURCES,
@@ -63,7 +120,9 @@ export function shouldPruneLegacyDefaultPackages(packages: PackageSource[] | und
 	if (packages.some((entry) => typeof entry !== "string")) {
 		return false;
 	}
-	return arraysMatchAsSets(packages as string[], LEGACY_DEFAULT_PACKAGE_SOURCES);
+	return LEGACY_DEFAULT_PACKAGE_SETS.some((legacySources) =>
+		arraysMatchAsSets(packages as string[], legacySources),
+	) || arraysMatchAsSets(packages as string[], LEGACY_DEFAULT_PACKAGE_SOURCES);
 }
 
 function parseNodeMajor(version: string): number {
@@ -95,32 +154,42 @@ export function normalizeOptionalPackagePresetName(name: string): OptionalPackag
 	return normalized in OPTIONAL_PACKAGE_PRESETS ? (normalized as OptionalPackagePresetName) : undefined;
 }
 
-export function isOptionalPackagePresetSupported(name: OptionalPackagePresetName, platform: NodeJS.Platform = process.platform): boolean {
-	const platforms = OPTIONAL_PACKAGE_PRESETS[name].platforms as readonly NodeJS.Platform[] | undefined;
-	return !platforms || platforms.includes(platform);
+export function isOptionalPackagePresetSupported(
+	name: OptionalPackagePresetName,
+	platform: NodeJS.Platform = process.platform,
+	version = process.versions.node,
+): boolean {
+	const preset = OPTIONAL_PACKAGE_PRESETS[name] as OptionalPackagePreset;
+	const platforms = preset.platforms;
+	const maxNodeMajor = preset.maxNodeMajor;
+	return (!platforms || platforms.includes(platform)) && (!maxNodeMajor || parseNodeMajor(version) <= maxNodeMajor);
 }
 
-export function getOptionalPackagePresetSources(name: string, platform: NodeJS.Platform = process.platform): string[] | undefined {
+export function getOptionalPackagePresetSources(
+	name: string,
+	platform: NodeJS.Platform = process.platform,
+	version = process.versions.node,
+): string[] | undefined {
 	const normalized = normalizeOptionalPackagePresetName(name);
 	if (!normalized) return undefined;
 
 	if (normalized === "all-extras") {
-		const sources = listOptionalPackagePresets(platform).flatMap((preset) => preset.sources);
+		const sources = listOptionalPackagePresets(platform, version).flatMap((preset) => preset.sources);
 		return sources.length > 0 ? sources : undefined;
 	}
 
-	if (!isOptionalPackagePresetSupported(normalized, platform)) return undefined;
+	if (!isOptionalPackagePresetSupported(normalized, platform, version)) return undefined;
 	return [...OPTIONAL_PACKAGE_PRESETS[normalized].sources];
 }
 
-export function listOptionalPackagePresets(platform?: NodeJS.Platform): Array<{
+export function listOptionalPackagePresets(platform?: NodeJS.Platform, version = process.versions.node): Array<{
 	name: OptionalPackagePresetName;
 	description: string;
 	sources: string[];
 }> {
 	const currentPlatform = platform ?? process.platform;
 	return Object.entries(OPTIONAL_PACKAGE_PRESETS).filter(([name]) =>
-		isOptionalPackagePresetSupported(name as OptionalPackagePresetName, currentPlatform),
+		isOptionalPackagePresetSupported(name as OptionalPackagePresetName, currentPlatform, version),
 	).map(([name, preset]) => ({
 		name: name as OptionalPackagePresetName,
 		description: preset.description,
@@ -128,8 +197,8 @@ export function listOptionalPackagePresets(platform?: NodeJS.Platform): Array<{
 	}));
 }
 
-export function listOptionalPackagePresetInstallTargets(platform?: NodeJS.Platform): string[] {
-	const names = listOptionalPackagePresets(platform).map((preset) => preset.name);
+export function listOptionalPackagePresetInstallTargets(platform?: NodeJS.Platform, version = process.versions.node): string[] {
+	const names = listOptionalPackagePresets(platform, version).map((preset) => preset.name);
 	return names.length > 0 ? [...names, "all-extras"] : [];
 }
 

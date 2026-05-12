@@ -40,3 +40,41 @@ test("patchPiExtensionLoaderSource is idempotent", () => {
 
 	assert.equal(twice, once);
 });
+
+test("patchPiExtensionLoaderSource aliases both Pi runtime namespaces to the bundled runtime", () => {
+	const input = [
+		'import { fileURLToPath, pathToFileURL } from "node:url";',
+		"const VIRTUAL_MODULES = {",
+		'    "@mariozechner/pi-agent-core": _bundledPiAgentCore,',
+		'    "@mariozechner/pi-tui": _bundledPiTui,',
+		'    "@mariozechner/pi-ai": _bundledPiAi,',
+		'    "@mariozechner/pi-ai/oauth": _bundledPiAiOauth,',
+		'    "@mariozechner/pi-coding-agent": _bundledPiCodingAgent,',
+		"};",
+		"function getAliases() {",
+		"    _aliases = {",
+		'        "@mariozechner/pi-coding-agent": packageIndex,',
+		'        "@mariozechner/pi-agent-core": resolveWorkspaceOrImport("agent/dist/index.js", "@mariozechner/pi-agent-core"),',
+		'        "@mariozechner/pi-tui": resolveWorkspaceOrImport("tui/dist/index.js", "@mariozechner/pi-tui"),',
+		'        "@mariozechner/pi-ai": resolveWorkspaceOrImport("ai/dist/index.js", "@mariozechner/pi-ai"),',
+		'        "@mariozechner/pi-ai/oauth": resolveWorkspaceOrImport("ai/dist/oauth.js", "@mariozechner/pi-ai/oauth"),',
+		"    };",
+		"}",
+		"async function loadExtensionModule(extensionPath) {",
+		"    const jiti = createJiti(import.meta.url);",
+		'    const module = await jiti.import(extensionPath, { default: true });',
+		"    return module;",
+		"}",
+		"",
+	].join("\n");
+
+	const patched = patchPiExtensionLoaderSource(input);
+
+	assert.match(patched, /"@earendil-works\/pi-agent-core": _bundledPiAgentCore/);
+	assert.match(patched, /"@earendil-works\/pi-tui": _bundledPiTui/);
+	assert.match(patched, /"@earendil-works\/pi-ai": _bundledPiAi/);
+	assert.match(patched, /"@earendil-works\/pi-ai\/oauth": _bundledPiAiOauth/);
+	assert.match(patched, /"@earendil-works\/pi-coding-agent": _bundledPiCodingAgent/);
+	assert.match(patched, /"@earendil-works\/pi-coding-agent": packageIndex/);
+	assert.match(patched, /"@earendil-works\/pi-tui": resolveWorkspaceOrImport\("tui\/dist\/index\.js", "@mariozechner\/pi-tui"\)/);
+});

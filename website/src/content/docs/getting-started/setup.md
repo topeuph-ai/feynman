@@ -116,6 +116,7 @@ to confirm the local model is available and make it the default.
 Feynman's core ships with the research essentials: alphaXiv access, web access, document parsing, and subagents. On platforms with supported optional presets, the wizard can offer extras:
 
 - **memory** -- Preference and correction memory across sessions
+- **hindsight** -- Hindsight-backed durable long-term memory for Pi; requires a Hindsight server or Hindsight Cloud account
 - **session-search** -- Indexed recall for prior session transcripts. Available through Node.js 22.x while its sqlite dependency is native-bound
 - **generative-ui** -- Interactive HTML-style widgets for rich output on macOS
 

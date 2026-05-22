@@ -34,6 +34,8 @@ export const NATIVE_PACKAGE_SOURCES = [
 ] as const;
 
 const CORE_PACKAGE_UPDATE_ALIASES: Record<string, string> = {
+	hindsight: "npm:@luxusai/pi-hindsight",
+	"pi-hindsight": "npm:@luxusai/pi-hindsight",
 	memory: "npm:@samfp/pi-memory",
 	"pi-memory": "npm:@samfp/pi-memory",
 	"session-search": "npm:@kaiserlich-dev/pi-session-search",
@@ -53,6 +55,10 @@ export const OPTIONAL_PACKAGE_PRESETS = {
 	memory: {
 		description: "Preference and correction memory across sessions.",
 		sources: ["npm:@samfp/pi-memory"],
+	},
+	hindsight: {
+		description: "Durable Hindsight-backed long-term memory for Pi.",
+		sources: ["npm:@luxusai/pi-hindsight"],
 	},
 	"session-search": {
 		description: "Indexed recall for prior session transcripts.",

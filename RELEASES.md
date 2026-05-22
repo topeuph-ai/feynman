@@ -4,6 +4,51 @@ This file is the public release history for Feynman. Keep entries user-facing: w
 
 GitHub release notes are generated from the matching `## vX.Y.Z` section in this file.
 
+## v0.2.58 - 2026-05-16
+
+### Optional Packages
+
+- Added a `hindsight` optional preset that installs `@luxusai/pi-hindsight`, giving users a first-class path to Hindsight-backed long-term memory without adding it to the default install.
+- Added `hindsight` and `pi-hindsight` update aliases so `feynman update hindsight` resolves to the same package source.
+- Updated the package-stack and setup docs to show Hindsight as an optional memory surface and note that it requires a Hindsight server or Hindsight Cloud account.
+
+### Validation
+
+- Added regression coverage for the new optional preset, `all-extras` expansion, and update aliases.
+
+## v0.2.57 - 2026-05-15
+
+### Runtime Reliability
+
+- Fixed the interactive prompt input color on macOS/iTerm profiles where typed text inherited a black terminal foreground against Feynman's dark editor background.
+- Applied the editor foreground/background patch through the shared Pi patch module so package-local installs and the vendored runtime archive stay in sync.
+
+### Validation
+
+- Added regression coverage for the patched Pi editor/theme source transformations, including idempotency.
+
+## v0.2.56 - 2026-05-13
+
+### Security
+
+- Updated the `protobufjs` dependency override from `7.5.5` to `7.5.8`, which pulls in the patched `@protobufjs/utf8` release and clears the current production audit advisory set.
+
+### Validation
+
+- Re-ran the root production audit after the override refresh and confirmed it reports zero vulnerabilities.
+
+## v0.2.55 - 2026-05-13
+
+### Model Catalog
+
+- Added OpenAI `gpt-5.5` to Feynman's research model preference order so it can be recommended, auto-selected, and surfaced ahead of older OpenAI GPT-5 models.
+- Added OpenAI Codex `gpt-5.5` to the research preference order for users whose Pi runtime exposes Codex directly.
+- Updated first-run/default setup preferences so OpenAI-only installs choose `openai/gpt-5.5` when available.
+
+### Validation
+
+- Added regression coverage for OpenAI `gpt-5.5` recommendation, model sorting, and default setup seeding.
+
 ## v0.2.54 - 2026-05-11
 
 ### Runtime Reliability

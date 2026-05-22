@@ -15,6 +15,33 @@ Use this file to track chronology, not release notes. Keep entries short, factua
 - Blockers: ...
 - Next: ...
 
+### 2026-05-16 17:43 PDT — hindsight-memory-preset
+
+- Objective: Address issue `#166` by making Hindsight memory installable through Feynman's optional package preset system.
+- Changed: Added a `hindsight` optional preset for `@luxusai/pi-hindsight`, added `hindsight` and `pi-hindsight` update aliases, bumped the package to `0.2.58`, and updated release, package-stack, and setup docs.
+- Verified: Live npm metadata and README for Hindsight Pi packages were checked; full root tests, typecheck, root build, root and website production audits, website build, package dry-run, package-list smoke, and a temp-home `feynman packages install hindsight` smoke passed locally.
+- Failed / learned: The issue body was empty, but live npm package research found multiple Hindsight Pi packages; `@luxusai/pi-hindsight` is the most current docs-backed fit for Feynman's newer Pi runtime namespace while remaining optional.
+- Blockers: Need commit, push, release workflow confirmation, npm latest verification, and issue update.
+- Next: Push `main`, watch release CI, verify npm latest, then update and close `#166`.
+
+### 2026-05-15 03:07 PDT — editor-input-contrast
+
+- Objective: Fix issue `#165`, where macOS/iTerm users could not read typed text in Feynman's dark interactive input box.
+- Changed: Centralized the Pi TUI editor/theme patch, added an explicit editor input foreground, applied the patch to package-local Pi files, launch-time runtime patching, and the vendored runtime archive path; bumped the package to `0.2.57`; added release notes; and updated the website lockfile `devalue` transitive to `5.8.1` after audit flagged the older release.
+- Verified: Focused Pi TUI tests, full root tests, typecheck, root build, root production audit, website production audit, website build, runtime archive content inspection, package dry-run, packed tarball inspection, and clean installed-tarball `feynman --version` plus `feynman doctor` passed locally.
+- Failed / learned: The placeholder was readable because it already used a themed foreground; typed input inherited the terminal default foreground after Feynman added the dark editor background.
+- Blockers: Need commit, push, release workflow confirmation, npm latest verification, and issue closure.
+- Next: Push `main`, watch release CI, verify npm latest, then close `#165`.
+
+### 2026-05-13 11:55 PDT — audit-detail-sweep
+
+- Objective: Tighten the current Feynman release line after a broad detail sweep.
+- Changed: Bumped the root `protobufjs` override to `7.5.8`, refreshed the lockfile, added `0.2.56` release notes, and kept the package line publishable with a new patch version.
+- Verified: Tracker and PR lists were empty; root tests, typecheck, build, root and website production audits, website build, diff whitespace check, package dry-run, and clean installed-tarball `feynman --version` plus `feynman doctor` passed after the override refresh.
+- Failed / learned: The first root production audit exposed a new `protobufjs <=7.5.5` advisory from the existing override, so `0.2.55` needed a follow-up security patch rather than a no-op sweep.
+- Blockers: Need commit, push, release workflow confirmation, and npm latest verification for `0.2.56`.
+- Next: Push `main`, watch release CI, then verify npm latest.
+
 ### 2026-05-09 16:20 PDT — skills-install-targets
 
 - Objective: Make standalone skills installs unambiguous for Codex, Claude/agent repo-local use, and OpenCode.

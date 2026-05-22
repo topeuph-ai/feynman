@@ -39,6 +39,7 @@ Install on demand with `feynman packages install <preset>`. These extend Feynman
 | Package | Preset | Purpose |
 | --- | --- | --- |
 | `@samfp/pi-memory` | `memory` | Pi-managed preference and correction memory across sessions |
+| `@luxusai/pi-hindsight` | `hindsight` | Hindsight-backed durable long-term memory for Pi. Requires a Hindsight server or Hindsight Cloud account |
 | `@kaiserlich-dev/pi-session-search` | `session-search` | Indexed session recall with summarize and resume UI. Available through Node.js 22.x while its sqlite dependency is native-bound |
 | `pi-generative-ui` | `generative-ui` | Interactive HTML-style widgets for rich output on macOS. The upstream package currently declares macOS-only support |
 
